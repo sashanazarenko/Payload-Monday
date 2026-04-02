@@ -7,7 +7,8 @@ interface RoleContextType {
 }
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
-const isStagePreview = import.meta.env.VITE_FEATURE_STAGE1 === 'true';
+// stage-1 branch is intentionally admin-only.
+const isStagePreview = true;
 
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [currentRole, setCurrentRoleState] = useState<UserRole>('admin');

@@ -46,7 +46,8 @@ export function RoleSwitcher({ currentRole, onRoleChange }: RoleSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const isStagePreview = import.meta.env.VITE_FEATURE_STAGE1 === 'true';
+  // stage-1 branch is intentionally admin-only.
+  const isStagePreview = true;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
