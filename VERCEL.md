@@ -2,6 +2,22 @@
 
 This app is a **Vite + React SPA**. `vercel.json` sends all routes to `index.html` so deep links like `/dashboard` work after deploy.
 
+## Branch and environment strategy
+
+- `main` = full stable version, deploys to **Production**
+- `stage-1` = first development stage, deploys to **Preview**
+- tag: `v1.0-full` = baseline snapshot of current full functionality
+
+In Vercel:
+
+1. Go to **Project Settings → Git** and set **Production Branch** to `main`.
+2. Keep `stage-1` as a regular branch so each push generates a preview deployment.
+3. Go to **Project Settings → Environment Variables** and set values by environment:
+   - **Production** values from `.env.example`
+   - **Preview** values from `.env.preview.example`
+
+If Stage-1 will modify schema or data behavior, use a separate DB URL in Preview.
+
 ## Option A — Vercel dashboard (no CLI)
 
 1. Push this folder to **GitHub** (repo can be private).
