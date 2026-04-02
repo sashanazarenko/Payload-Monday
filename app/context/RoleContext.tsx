@@ -15,8 +15,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   const setCurrentRole = (role: UserRole) => {
     if (isStagePreview) {
-      // In stage preview we keep an admin-only view.
-      setCurrentRoleState('admin');
+      // In stage preview we keep an admin-only view across all screens.
       return;
     }
     setCurrentRoleState(role);
