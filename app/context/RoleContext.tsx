@@ -7,9 +7,19 @@ interface RoleContextType {
 }
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
+const isStagePreview = import.meta.env.VITE_FEATURE_STAGE1 === 'true';
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [currentRole, setCurrentRole] = useState<UserRole>('admin');
+  const [currentRole, setCurrentRoleState] = useState<UserRole>('admin');
+
+  const setCurrentRole = (role: UserRole) => {
+    if (isStagePreview) {
+      // In stage preview we keep an admin-only view.
+      setCurrentRoleState('admin');
+      return;
+    }
+    setCurrentRoleState(role);
+  };
 
   return (
     <RoleContext.Provider value={{ currentRole, setCurrentRole }}>

@@ -46,6 +46,7 @@ export function RoleSwitcher({ currentRole, onRoleChange }: RoleSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const isStagePreview = import.meta.env.VITE_FEATURE_STAGE1 === 'true';
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -63,7 +64,11 @@ export function RoleSwitcher({ currentRole, onRoleChange }: RoleSwitcherProps) {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!isStagePreview) {
+            setIsOpen(!isOpen);
+          }
+        }}
         className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-gray-50 transition-colors"
       >
         <div className="flex-1 text-left">
@@ -79,14 +84,16 @@ export function RoleSwitcher({ currentRole, onRoleChange }: RoleSwitcherProps) {
             {currentRoleInfo.label}
           </p>
         </div>
-        <ChevronDown 
-          size={16} 
-          style={{ color: 'var(--jolly-text-disabled)' }}
-          className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        />
+        {!isStagePreview && (
+          <ChevronDown 
+            size={16} 
+            style={{ color: 'var(--jolly-text-disabled)' }}
+            className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          />
+        )}
       </button>
 
-      {isOpen && (
+      {isOpen && !isStagePreview && (
         <div 
           className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded shadow-lg border overflow-hidden"
           style={{ 
