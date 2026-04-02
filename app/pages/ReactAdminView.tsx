@@ -2,9 +2,12 @@ import { useMemo } from 'react';
 import {
   AdminContext,
   AdminUI,
+  AppBar,
   DataProvider,
+  Layout,
   Edit,
   List,
+  Menu,
   NumberField,
   NumberInput,
   Resource,
@@ -13,7 +16,15 @@ import {
   TextField,
   TextInput,
   Datagrid,
+  SearchInput,
+  TopToolbar,
+  FilterButton,
+  CreateButton,
+  ExportButton,
+  TitlePortal,
 } from 'react-admin';
+import { createTheme } from '@mui/material/styles';
+import { Box, Typography } from '@mui/material';
 import { mockProducts } from '../data/mockProducts';
 
 type AdminRecord = Record<string, unknown> & { id: string | number };
@@ -76,9 +87,133 @@ function buildDataProvider(): DataProvider {
   };
 }
 
+const raTheme = createTheme({
+  palette: {
+    primary: { main: '#1F5C9E' },
+    secondary: { main: '#B8D4EE' },
+    background: {
+      default: '#F5F7FA',
+      paper: '#FFFFFF',
+    },
+    text: {
+      primary: '#1A1A1A',
+      secondary: '#555555',
+    },
+    divider: '#DCDFE6',
+  },
+  shape: { borderRadius: 10 },
+  typography: {
+    fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+  },
+  components: {
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          border: '1px solid #DCDFE6',
+          boxShadow: '0 1px 2px rgba(16, 24, 40, 0.04)',
+        },
+      },
+    },
+    MuiTableHead: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#F2F2F2',
+        },
+      },
+    },
+    MuiButton: {
+      defaultProps: {
+        variant: 'contained',
+        disableElevation: true,
+      },
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 600,
+          borderRadius: 8,
+        },
+      },
+    },
+  },
+});
+
+const listFilters = [
+  <SearchInput key="q" source="q" alwaysOn placeholder="Search by name, SKU, supplier..." />,
+];
+
+const ListActions = () => (
+  <TopToolbar>
+    <FilterButton />
+    <ExportButton />
+    <CreateButton />
+  </TopToolbar>
+);
+
+const BrandAppBar = () => (
+  <AppBar
+    sx={{
+      '& .RaAppBar-toolbar': {
+        backgroundColor: '#FFFFFF',
+        borderBottom: '1px solid #DCDFE6',
+        color: '#1A1A1A',
+      },
+    }}
+  >
+    <TitlePortal />
+    <Typography variant="subtitle1" fontWeight={700} color="#1F5C9E">
+      Jolly Catalogue Admin
+    </Typography>
+  </AppBar>
+);
+
+const BrandMenu = () => (
+  <Menu
+    sx={{
+      '& .RaMenu-open': { backgroundColor: '#EBF3FB' },
+      '& .RaMenuItemLink-active': {
+        borderRight: '3px solid #1F5C9E',
+      },
+    }}
+  >
+    <Menu.DashboardItem />
+    <Menu.ResourceItem name="products" />
+  </Menu>
+);
+
+const BrandLayout = (props: any) => (
+  <Layout
+    {...props}
+    appBar={BrandAppBar}
+    menu={BrandMenu}
+    sx={{
+      '& .RaLayout-contentWithSidebar': { backgroundColor: '#F5F7FA' },
+      '& .RaLayout-sidebar': {
+        width: 240,
+        '& .RaSidebar-fixed': {
+          width: 240,
+          borderRight: '1px solid #DCDFE6',
+          backgroundColor: '#FFFFFF',
+        },
+      },
+    }}
+  />
+);
+
 const ProductList = () => (
-  <List perPage={10} sort={{ field: 'name', order: 'ASC' }}>
-    <Datagrid rowClick="edit" bulkActionButtons={false}>
+  <List
+    title="Product Catalogue"
+    perPage={10}
+    sort={{ field: 'name', order: 'ASC' }}
+    filters={listFilters}
+    actions={<ListActions />}
+  >
+    <Datagrid
+      rowClick="edit"
+      bulkActionButtons={false}
+      sx={{
+        '& .column-name': { fontWeight: 600 },
+      }}
+    >
       <TextField source="id" />
       <TextField source="name" />
       <TextField source="supplier" />
@@ -92,7 +227,7 @@ const ProductList = () => (
 );
 
 const ProductEdit = () => (
-  <Edit>
+  <Edit title="Edit Product">
     <SimpleForm>
       <TextInput source="name" fullWidth />
       <TextInput source="supplier" />
@@ -122,12 +257,12 @@ export function ReactAdminView() {
   const dataProvider = useMemo(() => buildDataProvider(), []);
 
   return (
-    <div style={{ height: '100vh' }}>
+    <Box sx={{ height: '100vh' }}>
       <AdminContext dataProvider={dataProvider}>
-        <AdminUI>
+        <AdminUI theme={raTheme} layout={BrandLayout}>
           <Resource name="products" list={ProductList} edit={ProductEdit} />
         </AdminUI>
       </AdminContext>
-    </div>
+    </Box>
   );
 }
