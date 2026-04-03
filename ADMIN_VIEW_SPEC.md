@@ -44,10 +44,9 @@ The following primary navigation items must be available for Admin:
 
 1. Dashboard (`/dashboard`)
 2. Products (`/`)
-3. Add Product (`/products/new`)
-4. Decorators (`/decorators`)
-5. APPA Sync (`/appa-sync`)
-6. Users (`/users`) - may be placeholder route but menu entry must exist
+3. Decorators (`/decorators`)
+4. APPA Sync (`/appa-sync`)
+5. Users (`/users`) - may be placeholder route but menu entry must exist
 
 Stage note:
 - Settings page is removed from stage navigation and stage routes.
