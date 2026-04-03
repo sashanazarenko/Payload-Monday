@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Info, Sparkles, Loader2 } from 'lucide-react';
-import { ProductFormData, SUPPLIERS, CATEGORIES, SUBCATEGORIES } from './types';
+import { ProductFormData, SUPPLIERS, CATEGORIES, SUBCATEGORIES, DEFAULT_APPA_FREIGHT } from './types';
 
 interface StepCoreDetailsProps {
   formData: ProductFormData;
@@ -18,6 +18,8 @@ export function StepCoreDetails({ formData, onUpdate, errors }: StepCoreDetailsP
     // Simulate APPA pre-fill
     setTimeout(() => {
       onUpdate({
+        source: 'appa',
+        appaFreight: DEFAULT_APPA_FREIGHT,
         productName: 'Metro Canvas Tote Bag',
         category: 'Bags & Totes',
         subcategory: 'Tote Bags',
@@ -273,8 +275,10 @@ export function StepCoreDetails({ formData, onUpdate, errors }: StepCoreDetailsP
                 <button
                   key={option.value}
                   onClick={() => {
-                    const updates: Partial<ProductFormData> = { source: option.value as ProductFormData['source'] };
-                    updates.isProposalOnly = option.value === 'proposal-only';
+                    const value = option.value as ProductFormData['source'];
+                    const updates: Partial<ProductFormData> = { source: value };
+                    updates.isProposalOnly = value === 'proposal-only';
+                    updates.appaFreight = value === 'appa' ? DEFAULT_APPA_FREIGHT : null;
                     onUpdate(updates);
                   }}
                   className="flex-1 p-3 rounded text-left"

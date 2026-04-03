@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  CheckSquare,
   ToggleLeft,
   ToggleRight,
   ChevronDown,
@@ -10,7 +9,6 @@ import {
 import { YesNoToggle } from '../YesNoToggle';
 
 export interface BelowMoqValues {
-  moqAvailable: boolean;
   allowBelowMoq: boolean;
   belowMoqSurchargeType: 'none' | 'flat' | 'percent';
   belowMoqSurchargeValue: number;
@@ -39,10 +37,8 @@ const TBD_OPTIONS: { label: string; sub: string }[] = [
   { label: 'Custom Formula',      sub: 'rule-based expression (admin)' },
 ];
 
-const SEGMENT_H = '30px';
-
 export function BelowMoqSurcharge({ values, t1MinQty, onUpdate, editable = true }: BelowMoqSurchargeProps) {
-  const { moqAvailable, allowBelowMoq, belowMoqSurchargeType, belowMoqSurchargeValue, belowMoqNote } = values;
+  const { allowBelowMoq, belowMoqSurchargeType, belowMoqSurchargeValue, belowMoqNote } = values;
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -58,73 +54,8 @@ export function BelowMoqSurcharge({ values, t1MinQty, onUpdate, editable = true 
 
   const selectedLabel = LIVE_OPTIONS.find(o => o.value === belowMoqSurchargeType)?.label ?? 'None';
 
-  const segmentButton = (opt: 'yes' | 'no', active: boolean, onClickVal: boolean, redNo?: boolean) => (
-    <button
-      key={opt}
-      onClick={() => editable && onUpdate(opt === 'yes' ? (onClickVal ? {} : {}) : {})}
-      style={{
-        padding: `0 14px`,
-        fontSize: '13px',
-        fontWeight: 600,
-        cursor: editable ? 'pointer' : 'default',
-        border: 'none',
-        borderLeft: opt === 'no' ? '1px solid var(--jolly-border)' : 'none',
-        backgroundColor: active
-          ? opt === 'yes' ? 'var(--jolly-primary)' : (redNo ? '#C0392B' : 'white')
-          : 'white',
-        color: active ? 'white' : 'var(--jolly-text-secondary)',
-        transition: 'background-color 0.15s, color 0.15s',
-        height: SEGMENT_H,
-      }}
-    >
-      {opt === 'yes' ? 'Yes' : 'No'}
-    </button>
-  );
-
   return (
     <div style={{ opacity: editable ? 1 : 0.65 }}>
-      {/* ── MOQ Availability ───────────────────────────────────────────────── */}
-      <div
-        className="mb-3 rounded"
-        style={{
-          border: '1px solid var(--jolly-border)',
-          backgroundColor: 'var(--jolly-bg)',
-          borderRadius: '6px',
-          overflow: 'hidden',
-        }}
-      >
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <CheckSquare
-              size={15}
-              style={{ color: moqAvailable ? 'var(--jolly-primary)' : 'var(--jolly-text-disabled)' }}
-            />
-            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--jolly-text-body)' }}>
-              MOQ Availability
-            </span>
-          </div>
-          <YesNoToggle
-            value={moqAvailable}
-            onChange={(v) => editable && onUpdate({ moqAvailable: v })}
-            disabled={!editable}
-            size="sm"
-          />
-        </div>
-
-        {/* Contextual helper — shifts meaning based on current value */}
-        <div
-          className="px-4 pb-3 flex items-start gap-1.5"
-        >
-          <Info size={12} style={{ color: 'var(--jolly-text-disabled)', marginTop: '2px', flexShrink: 0 }} />
-          <p style={{ fontSize: '12px', color: 'var(--jolly-text-secondary)', lineHeight: 1.5 }}>
-            {moqAvailable
-              ? <>Can clients place orders at the stated minimum order quantity? Set to <strong>No</strong> if the product is currently unavailable or discontinued at MOQ — this disables quantity-tier pricing.</>
-              : <><strong style={{ color: 'var(--jolly-warning)' }}>MOQ unavailable.</strong> Tier pricing is suspended. Switch back to <strong>Yes</strong> when the product resumes normal minimum-order fulfilment.</>
-            }
-          </p>
-        </div>
-      </div>
-
       {/* ── Allow Below MOQ ────────────────────────────────────────────────── */}
       <div
         className="rounded"

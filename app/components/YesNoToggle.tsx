@@ -34,6 +34,7 @@ export function YesNoToggle({ value, onChange, disabled = false, size = 'md' }: 
     >
       {/* YES */}
       <button
+        type="button"
         onClick={() => onChange(true)}
         style={{
           padding: `0 ${px}`,
@@ -55,6 +56,7 @@ export function YesNoToggle({ value, onChange, disabled = false, size = 'md' }: 
 
       {/* NO — charcoal when active so it's clearly distinct from the unselected white state */}
       <button
+        type="button"
         onClick={() => onChange(false)}
         style={{
           padding: `0 ${px}`,

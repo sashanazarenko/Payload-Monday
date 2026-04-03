@@ -1,9 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
 import {
   Check,
-  Circle,
-  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -12,7 +10,7 @@ import {
 } from 'lucide-react';
 import { LeftSidebar } from '../components/LeftSidebar';
 import { useRole } from '../context/RoleContext';
-import { ProductFormData, INITIAL_FORM_DATA, StepInfo } from '../components/add-product/types';
+import { ProductFormData, INITIAL_FORM_DATA, getGlobalPriceCurve } from '../components/add-product/types';
 import { StepCoreDetails } from '../components/add-product/StepCoreDetails';
 import { StepVariantsPricing } from '../components/add-product/StepVariantsPricing';
 import { StepDecoration } from '../components/add-product/StepDecoration';
@@ -22,11 +20,19 @@ import { ActivationModal } from '../components/add-product/ActivationModal';
 
 const STEP_LABELS = ['Core Details', 'Decoration', 'Pricing & Tiers', 'Assets', 'Review'];
 
+/** Stable tier ids for new wizard state (`getGlobalPriceCurve` shapes the ladder; ids match form conventions). */
+function initialPricingTiersFromSettings(): ProductFormData['pricingTiers'] {
+  return getGlobalPriceCurve().map((t, i) => ({ ...t, id: String(i + 1) }));
+}
+
 export function NewProduct() {
   const navigate = useNavigate();
   const { currentRole, setCurrentRole } = useRole();
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<ProductFormData>(INITIAL_FORM_DATA);
+  const [formData, setFormData] = useState<ProductFormData>(() => ({
+    ...INITIAL_FORM_DATA,
+    pricingTiers: initialPricingTiersFromSettings(),
+  }));
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('saved');
   const [lastSavedTime, setLastSavedTime] = useState<string>('12:34 PM');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -59,23 +65,6 @@ export function NewProduct() {
 
   // Validation report
   const validationReport = getValidationReport(formData);
-
-  // Step status calculation
-  const getStepStatus = (step: number): StepInfo['status'] => {
-    if (step === currentStep) return 'in-progress';
-    const stepItems = validationReport.items.filter(i => i.step === step);
-    if (stepItems.length === 0) return 'not-started';
-    if (stepItems.some(i => i.status === 'error')) return 'error';
-    if (stepItems.some(i => i.status === 'warning')) return 'complete-with-warning';
-    if (stepItems.every(i => i.status === 'pass')) return 'complete';
-    return 'in-progress';
-  };
-
-  const steps: StepInfo[] = STEP_LABELS.map((label, i) => ({
-    number: i + 1,
-    label,
-    status: getStepStatus(i + 1),
-  }));
 
   // Completeness
   const completedFields = validationReport.totalComplete;
@@ -152,46 +141,6 @@ export function NewProduct() {
     );
   }
 
-  // Step status pill styles
-  const getStepPillStyle = (step: StepInfo) => {
-    const base = {
-      fontSize: '12px',
-      fontWeight: 600 as const,
-      borderRadius: '16px',
-      cursor: 'pointer' as const,
-      border: 'none' as const,
-      transition: 'all 0.15s',
-    };
-
-    switch (step.status) {
-      case 'complete':
-        return { ...base, backgroundColor: 'var(--jolly-success)', color: 'white' };
-      case 'complete-with-warning':
-        return { ...base, backgroundColor: '#F5A623', color: 'white' };
-      case 'in-progress':
-        return { ...base, backgroundColor: 'var(--jolly-primary)', color: 'white' };
-      case 'error':
-        return { ...base, backgroundColor: 'var(--jolly-destructive)', color: 'white' };
-      default:
-        return { ...base, backgroundColor: 'var(--jolly-bg)', color: 'var(--jolly-text-disabled)', border: '1px solid var(--jolly-border)' };
-    }
-  };
-
-  const getStepIcon = (step: StepInfo) => {
-    switch (step.status) {
-      case 'complete':
-        return <Check size={14} />;
-      case 'complete-with-warning':
-        return <AlertTriangle size={14} />;
-      case 'error':
-        return <XCircle size={14} />;
-      case 'in-progress':
-        return <Circle size={14} fill="white" />;
-      default:
-        return <Circle size={14} />;
-    }
-  };
-
   return (
     <div
       className="flex h-screen overflow-hidden"
@@ -203,129 +152,147 @@ export function NewProduct() {
       <LeftSidebar currentRole={currentRole} onRoleChange={setCurrentRole} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Bar with Breadcrumb & Step Progress */}
-        <div
-          className="flex items-center justify-between px-6 py-3 border-b"
-          style={{
-            backgroundColor: 'var(--jolly-card)',
-            borderColor: 'var(--jolly-border)',
-            minHeight: '72px',
-          }}
+        {/* Compact header: title row + single slim toolbar (step + draft + progress + save) */}
+        <header
+          className="shrink-0 border-b"
+          style={{ backgroundColor: 'var(--jolly-card)', borderColor: 'var(--jolly-border)' }}
         >
-          <div>
-            <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center justify-between gap-4 px-5 py-3">
+            <div className="min-w-0">
               <Link
                 to="/"
-                className="hover:underline"
-                style={{ color: 'var(--jolly-text-secondary)', fontSize: '13px', textDecoration: 'none' }}
+                className="text-[12px] hover:underline"
+                style={{ color: 'var(--jolly-text-secondary)', textDecoration: 'none' }}
               >
-                Products
+                ← Products
               </Link>
-              <span style={{ color: 'var(--jolly-text-disabled)', fontSize: '13px' }}>/</span>
-              <span style={{ color: 'var(--jolly-text-body)', fontSize: '13px' }}>New Product</span>
+              <h1
+                className="mt-1 truncate text-[1.125rem] font-semibold leading-tight tracking-tight"
+                style={{ color: 'var(--jolly-text-body)' }}
+              >
+                New product
+              </h1>
             </div>
-            <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--jolly-text-body)' }}>
-              Add New Product
-            </h1>
+            <div
+              className="flex shrink-0 items-center gap-1.5 text-[12px] max-md:pr-0"
+              style={{ color: 'var(--jolly-text-secondary)' }}
+              aria-live="polite"
+            >
+              {saveStatus === 'saving' && (
+                <>
+                  <Loader2 size={14} className="animate-spin" style={{ color: 'var(--jolly-text-disabled)' }} />
+                  <span className="hidden sm:inline" style={{ color: 'var(--jolly-text-disabled)' }}>
+                    Saving…
+                  </span>
+                </>
+              )}
+              {saveStatus === 'saved' && (
+                <>
+                  <Check size={14} style={{ color: 'var(--jolly-success)' }} />
+                  <span className="hidden sm:inline" style={{ color: 'var(--jolly-success)' }}>
+                    Saved {lastSavedTime}
+                  </span>
+                </>
+              )}
+              {saveStatus === 'error' && (
+                <>
+                  <XCircle size={14} style={{ color: 'var(--jolly-destructive)' }} />
+                  <span className="hidden sm:inline" style={{ color: 'var(--jolly-destructive)' }}>
+                    Save failed
+                  </span>
+                </>
+              )}
+            </div>
           </div>
 
-          {/* Step Progress Indicator */}
-          <div className="flex items-center gap-2">
-            {steps.map((step, i) => (
-              <div key={step.number} className="flex items-center">
-                <button
-                  onClick={() => handleNavigateStep(step.number)}
-                  className="flex items-center gap-2 px-3 py-1.5"
-                  style={getStepPillStyle(step)}
-                  aria-current={step.status === 'in-progress' ? 'step' : undefined}
-                  aria-label={`Step ${step.number}: ${step.label} — ${step.status}`}
+          <div
+            className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t px-5 py-2"
+            style={{
+              borderColor: 'var(--jolly-border)',
+              backgroundColor: 'color-mix(in srgb, var(--jolly-bg) 65%, var(--jolly-card))',
+            }}
+          >
+            <nav className="flex min-w-0 flex-[1_1_260px] items-center gap-0.5" aria-label="Wizard steps">
+              <button
+                type="button"
+                aria-label="Previous step"
+                disabled={currentStep <= 1}
+                onClick={() => handleNavigateStep(currentStep - 1)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--jolly-primary)] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40"
+                style={{
+                  borderColor: 'var(--jolly-border)',
+                  backgroundColor: 'var(--jolly-card)',
+                  color: 'var(--jolly-text-body)',
+                }}
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <select
+                id="wizard-step-select"
+                aria-label={`Step ${currentStep} of ${STEP_LABELS.length}: ${STEP_LABELS[currentStep - 1]}`}
+                className="min-h-8 min-w-0 flex-1 cursor-pointer rounded-md border px-2 py-1 text-[13px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--jolly-primary)] focus-visible:ring-offset-1"
+                style={{
+                  borderColor: 'var(--jolly-border)',
+                  backgroundColor: 'var(--jolly-card)',
+                  color: 'var(--jolly-text-body)',
+                }}
+                value={currentStep}
+                onChange={(e) => handleNavigateStep(Number(e.target.value))}
+              >
+                {STEP_LABELS.map((label, i) => (
+                  <option key={label} value={i + 1}>
+                    {i + 1}. {label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                aria-label="Next step"
+                disabled={currentStep >= STEP_LABELS.length}
+                onClick={() => handleNavigateStep(currentStep + 1)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--jolly-primary)] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40"
+                style={{
+                  borderColor: 'var(--jolly-border)',
+                  backgroundColor: 'var(--jolly-card)',
+                  color: 'var(--jolly-text-body)',
+                }}
+              >
+                <ChevronRight size={18} />
+              </button>
+            </nav>
+
+            <div className="ml-auto flex min-w-0 flex-[1_1_200px] items-center justify-end gap-2 sm:pl-3">
+              <span
+                className="hidden min-[400px]:inline text-[12px] font-medium whitespace-nowrap"
+                style={{ color: completenessColor }}
+              >
+                {completedFields}/{totalFields} required
+              </span>
+              <div className="flex max-w-[160px] flex-1 items-center gap-2">
+                <div
+                  className="min-w-[72px] flex-1 overflow-hidden rounded-full"
+                  style={{ height: '4px', backgroundColor: 'var(--jolly-border)' }}
                 >
-                  {getStepIcon(step)}
-                  <span className="hidden lg:inline">{step.label}</span>
-                  <span className="lg:hidden">{step.number}</span>
-                </button>
-                {i < steps.length - 1 && (
                   <div
-                    className="mx-1"
                     style={{
-                      width: '20px',
-                      height: '2px',
-                      backgroundColor: step.status === 'complete' || step.status === 'complete-with-warning' ? 'var(--jolly-success)' : 'var(--jolly-border)',
+                      height: '100%',
+                      width: `${completenessPercent}%`,
+                      backgroundColor: completenessColor,
+                      transition: 'width 0.3s',
+                      borderRadius: '9999px',
                     }}
                   />
-                )}
+                </div>
+                <span
+                  className="w-8 shrink-0 text-right text-[11px] tabular-nums"
+                  style={{ color: 'var(--jolly-text-disabled)' }}
+                >
+                  {completenessPercent}%
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Persistent Status Bar */}
-        <div
-          className="flex items-center justify-between px-6 border-b"
-          style={{
-            backgroundColor: '#F9FAFB',
-            borderColor: 'var(--jolly-border)',
-            height: '40px',
-            flexShrink: 0,
-          }}
-        >
-          {/* Left: Product Name */}
-          <div style={{ fontSize: '13px', color: 'var(--jolly-text-secondary)' }}>
-            {formData.productName ? (
-              <span>Editing: <strong style={{ color: 'var(--jolly-text-body)' }}>{formData.productName.length > 40 ? formData.productName.slice(0, 40) + '…' : formData.productName}</strong></span>
-            ) : (
-              <span style={{ fontStyle: 'italic' }}>New product (unsaved)</span>
-            )}
-          </div>
-
-          {/* Centre: Completeness */}
-          <div className="flex items-center gap-3">
-            <span style={{ fontSize: '13px', color: completenessColor, fontWeight: 500 }}>
-              {completedFields} of {totalFields} required fields complete
-            </span>
-            <div className="flex items-center gap-2" style={{ width: '120px' }}>
-              <div
-                className="flex-1 rounded-full overflow-hidden"
-                style={{ height: '4px', backgroundColor: 'var(--jolly-border)' }}
-              >
-                <div
-                  style={{
-                    height: '100%',
-                    width: `${completenessPercent}%`,
-                    backgroundColor: completenessColor,
-                    transition: 'width 0.3s',
-                    borderRadius: '9999px',
-                  }}
-                />
-              </div>
-              <span style={{ fontSize: '11px', color: 'var(--jolly-text-disabled)', whiteSpace: 'nowrap' }}>
-                {completenessPercent}%
-              </span>
             </div>
           </div>
-
-          {/* Right: Save Status */}
-          <div className="flex items-center gap-2" style={{ fontSize: '13px' }}>
-            {saveStatus === 'saving' && (
-              <>
-                <Loader2 size={14} className="animate-spin" style={{ color: 'var(--jolly-text-disabled)' }} />
-                <span style={{ color: 'var(--jolly-text-disabled)' }}>Saving…</span>
-              </>
-            )}
-            {saveStatus === 'saved' && (
-              <>
-                <Check size={14} style={{ color: 'var(--jolly-success)' }} />
-                <span style={{ color: 'var(--jolly-success)' }}>Draft saved {lastSavedTime}</span>
-              </>
-            )}
-            {saveStatus === 'error' && (
-              <>
-                <XCircle size={14} style={{ color: 'var(--jolly-destructive)' }} />
-                <span style={{ color: 'var(--jolly-destructive)' }}>Save failed</span>
-              </>
-            )}
-          </div>
-        </div>
+        </header>
 
         {/* Main Form Area */}
         <div className="flex-1 overflow-y-auto" ref={mainContentRef}>

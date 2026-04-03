@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   ProductFormData, DecorationMethod, DECORATION_METHODS_LIST, DECORATORS,
-  PRIMARY_DECORATION_METHODS,
+  PRIMARY_DECORATION_METHODS, BespokeAddon,
 } from './types';
 import { getDecoratorsByMethod, getDecoratorRateCard } from '../../data/decoratorData';
 
@@ -98,15 +98,17 @@ export function StepDecoration({ formData, onUpdate, errors }: StepDecorationPro
   };
 
   const handleAddBespokeOption = () => {
+    const newAddon: BespokeAddon = {
+      id: String(Date.now()),
+      name: '',
+      tierCosts: {},
+    };
     onUpdate({
-      bespokeAddons: [
-        ...(formData.bespokeAddons ?? []),
-        { id: String(Date.now()), name: '', unitCost: 0 },
-      ],
+      bespokeAddons: [...(formData.bespokeAddons ?? []), newAddon],
     });
   };
 
-  const handleUpdateBespokeOption = (id: string, updates: { name?: string; unitCost?: number }) => {
+  const handleUpdateBespokeOption = (id: string, updates: { name?: string }) => {
     onUpdate({
       bespokeAddons: (formData.bespokeAddons ?? []).map((opt) =>
         opt.id === id ? { ...opt, ...updates } : opt,
@@ -190,25 +192,16 @@ export function StepDecoration({ formData, onUpdate, errors }: StepDecorationPro
               </button>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--jolly-text-secondary)', marginBottom: '10px' }}>
-              Bespoke add-ons vary per product. Enter each customisable option and its cost.
+              Bespoke add-ons vary per product. Name each option here; set <strong>volume-based $/unit</strong> for every quantity break in <strong>Step 3 — Pricing</strong>.
             </p>
             <div className="space-y-2">
               {(formData.bespokeAddons ?? []).map((opt) => (
-                <div key={opt.id} className="grid grid-cols-[1fr_140px_36px] gap-2 items-center">
+                <div key={opt.id} className="grid grid-cols-[1fr_36px] gap-2 items-center">
                   <input
                     type="text"
                     value={opt.name}
                     onChange={(e) => handleUpdateBespokeOption(opt.id, { name: e.target.value })}
                     placeholder="Option name (e.g. Metal buckle)"
-                    className="w-full px-3 py-2"
-                    style={{ ...inputStyle, height: '36px' }}
-                  />
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={opt.unitCost}
-                    onChange={(e) => handleUpdateBespokeOption(opt.id, { unitCost: parseFloat(e.target.value) || 0 })}
-                    placeholder="3.50"
                     className="w-full px-3 py-2"
                     style={{ ...inputStyle, height: '36px' }}
                   />
@@ -260,7 +253,7 @@ export function StepDecoration({ formData, onUpdate, errors }: StepDecorationPro
             <div style={{ fontSize: '13px', lineHeight: 1.5 }}>
               <span style={{ fontWeight: 700, color: '#5B21B6' }}>Pricing will be entered manually in the next step.</span>
               <span style={{ color: '#6D28D9' }}>
-                {' '}No decorator rate card will be applied — Step 3 uses base unit costs plus bespoke add-ons.
+                {' '}No decorator rate card will be applied — Step 3 uses base unit costs per tier plus bespoke add-on costs per tier.
               </span>
             </div>
           </div>

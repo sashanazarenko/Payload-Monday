@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, AlertTriangle, X as XIcon, ChevronDown, ChevronUp, Edit, Package, Tag, Printer, Image } from 'lucide-react';
-import { ProductFormData } from './types';
+import { ProductFormData, DEFAULT_APPA_FREIGHT, websiteStorefrontPackComplete, isProposalOnlyProduct } from './types';
 
 interface StepReviewProps {
   formData: ProductFormData;
@@ -110,10 +110,31 @@ export function getValidationReport(formData: ProductFormData): ValidationReport
 
   // Step 4 validations
   const blankImages = formData.assets.filter(a => a.category === 'blank' && a.status === 'complete');
+  const proposalOnly = isProposalOnlyProduct(formData);
   if (blankImages.length > 0) {
     items.push({ field: 'Blank Product Images', step: 4, status: 'pass', message: `${blankImages.length} image(s)` });
+  } else if (proposalOnly) {
+    items.push({ field: 'Blank Product Images', step: 4, status: 'error', message: 'Required for proposal-only products' });
   } else {
     items.push({ field: 'Blank Product Images', step: 4, status: 'warning', message: 'Recommended — no images uploaded' });
+  }
+
+  if (formData.liveOnWebsite) {
+    const packOk = websiteStorefrontPackComplete(formData.assets);
+    if (packOk) {
+      items.push({ field: 'Website storefront images', step: 4, status: 'pass', message: 'Tile, hover, and variant images present' });
+    } else {
+      const need: string[] = [];
+      if (!formData.assets.some(a => a.category === 'website_tile' && a.status === 'complete')) need.push('tile');
+      if (!formData.assets.some(a => a.category === 'website_hover' && a.status === 'complete')) need.push('hover');
+      if (!formData.assets.some(a => a.category === 'website_variant' && a.status === 'complete')) need.push('variant');
+      items.push({
+        field: 'Website storefront images',
+        step: 4,
+        status: 'error',
+        message: `Live on website requires: ${need.join(', ')} image(s)`,
+      });
+    }
   }
 
   const totalRequired = items.filter(i => i.status === 'error' || i.status === 'pass').length;
@@ -154,6 +175,8 @@ export function StepReview({ formData, onNavigateToStep, onActivate, validationR
       </span>
     );
   };
+
+  const appaFreightReview = formData.source === 'appa' ? (formData.appaFreight ?? DEFAULT_APPA_FREIGHT) : null;
 
   const sections = [
     {
@@ -220,14 +243,29 @@ export function StepReview({ formData, onNavigateToStep, onActivate, validationR
             <DetailRow label="Pricing Tiers" value={`${formData.pricingTiers.length} tier(s)`} />
             <DetailRow label="Margin Target" value={`${formData.marginTarget}%`} />
             <DetailRow label="Margin Floor" value={`${formData.marginFloor}%`} />
-            <DetailRow label="Supplier is Decorator" value={formData.supplierIsDecorator ? 'Yes' : 'No'} />
-            {!formData.supplierIsDecorator && (
-              <DetailRow label="Freight — Supplier → Decorator" value={`$${formData.freightLeg1.toFixed(2)} / unit`} />
+            {appaFreightReview ? (
+              <>
+                <DetailRow
+                  label="Freight (APPA)"
+                  value={`${appaFreightReview.lineLabel} — ${appaFreightReview.lineSubtitle}`}
+                />
+                <DetailRow
+                  label="Shipping (per order)"
+                  value={`$${appaFreightReview.perOrderAmount.toFixed(2)} × ${appaFreightReview.perOrderQuantity}`}
+                />
+              </>
+            ) : (
+              <>
+                <DetailRow label="Supplier is Decorator" value={formData.supplierIsDecorator ? 'Yes' : 'No'} />
+                {!formData.supplierIsDecorator && (
+                  <DetailRow label="Freight — Supplier → Decorator" value={`$${formData.freightLeg1.toFixed(2)} / unit`} />
+                )}
+                <DetailRow
+                  label={formData.supplierIsDecorator ? 'Freight — Supplier/Dec → Jolly HQ' : 'Freight — Decorator → Jolly HQ'}
+                  value={`$${formData.freightLeg2.toFixed(2)} / unit`}
+                />
+              </>
             )}
-            <DetailRow
-              label={formData.supplierIsDecorator ? 'Freight — Supplier/Dec → Jolly HQ' : 'Freight — Decorator → Jolly HQ'}
-              value={`$${formData.freightLeg2.toFixed(2)} / unit`}
-            />
             <DetailRow label="Rush Fee" value={`$${formData.rushFee.toFixed(2)} / unit`} />
             <DetailRow label="Min Order Qty" value={String(formData.minOrderQty)} />
             <DetailRow label="Max Order Qty" value={formData.maxOrderQty ? String(formData.maxOrderQty) : 'No limit'} />
@@ -263,6 +301,10 @@ export function StepReview({ formData, onNavigateToStep, onActivate, validationR
       icon: <Image size={18} />,
       content: (
         <div className="space-y-3">
+          <DetailRow label="Live on website" value={formData.liveOnWebsite ? 'Yes' : 'No'} />
+          <DetailRow label="Website — Tile" value={`${formData.assets.filter(a => a.category === 'website_tile' && a.status === 'complete').length} file(s)`} />
+          <DetailRow label="Website — Hover" value={`${formData.assets.filter(a => a.category === 'website_hover' && a.status === 'complete').length} file(s)`} />
+          <DetailRow label="Website — Variants" value={`${formData.assets.filter(a => a.category === 'website_variant' && a.status === 'complete').length} file(s)`} />
           <DetailRow label="Blank Product Images" value={`${formData.assets.filter(a => a.category === 'blank' && a.status === 'complete').length} file(s)`} />
           <DetailRow label="Lifestyle Images" value={`${formData.assets.filter(a => a.category === 'lifestyle' && a.status === 'complete').length} file(s)`} />
           {formData.decorationMethods.map(method => (

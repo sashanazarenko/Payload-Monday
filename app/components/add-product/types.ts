@@ -16,6 +16,32 @@ export interface PricingTier {
   source?: 'decorator' | 'template' | 'manual';
 }
 
+export interface BespokeAddon {
+  id: string;
+  name: string;
+  /** Add-on $/unit at each product pricing tier (keys = `PricingTier.id`). */
+  tierCosts: Record<string, number>;
+}
+
+/** Ensure `tierCosts` has an entry for every tier; migrates legacy flat `unitCost` if present. */
+export function normalizeBespokeAddon(
+  raw: { id: string; name: string; tierCosts?: Record<string, number>; unitCost?: number },
+  tierIds: string[],
+): BespokeAddon {
+  const fallback = typeof raw.unitCost === 'number' ? raw.unitCost : 0;
+  const tierCosts: Record<string, number> = {};
+  for (const tid of tierIds) {
+    const v = raw.tierCosts?.[tid];
+    tierCosts[tid] = typeof v === 'number' ? v : fallback;
+  }
+  return { id: raw.id, name: raw.name, tierCosts };
+}
+
+export function sumBespokeAddonsForTier(addons: BespokeAddon[], tierId: string | undefined): number {
+  if (!tierId) return 0;
+  return addons.reduce((sum, a) => sum + (a.tierCosts[tierId] ?? 0), 0);
+}
+
 export interface DecorationMethod {
   id: string;
   method: string;
@@ -38,9 +64,33 @@ export interface AssetFile {
   type: string;
   status: 'uploading' | 'complete' | 'error';
   progress: number;
-  category: 'blank' | 'lifestyle' | 'decoration';
+  category: 'blank' | 'lifestyle' | 'decoration' | 'website_tile' | 'website_hover' | 'website_variant';
   decorationMethodId?: string;
 }
+
+/** At least one complete asset in each website slot (tile, hover, variant). */
+export function websiteStorefrontPackComplete(assets: AssetFile[]): boolean {
+  const ok = (cat: AssetFile['category']) =>
+    assets.some(a => a.category === cat && a.status === 'complete');
+  return ok('website_tile') && ok('website_hover') && ok('website_variant');
+}
+
+/** Freight/shipping lines supplied by APPA (read-only in wizard; prototype uses defaults until feed API). */
+export interface AppaFreightFromFeed {
+  lineLabel: string;
+  lineSubtitle: string;
+  /** Charge per order (e.g. domestic handling), not per unit. */
+  perOrderAmount: number;
+  /** Line quantity in supplier UI (usually 1 per order). */
+  perOrderQuantity: number;
+}
+
+export const DEFAULT_APPA_FREIGHT: AppaFreightFromFeed = {
+  lineLabel: 'Shipping & Handling',
+  lineSubtitle: 'Per domestic address',
+  perOrderAmount: 15,
+  perOrderQuantity: 1,
+};
 
 export interface ProductFormData {
   // Step 1 — Core Details
@@ -54,6 +104,8 @@ export interface ProductFormData {
   description: string;
   isNonPublic: boolean;
   isProposalOnly: boolean;
+  /** When true, storefront requires tile, hover, and variant images before staying on. */
+  liveOnWebsite: boolean;
 
   // Step 2 — Decoration
   /** Primary decoration method selected in Step 2 — drives rate-card lookup in Step 3. */
@@ -62,8 +114,8 @@ export interface ProductFormData {
   primaryDecoratorSupplier: string;
   /** Optional bespoke decoration description (shown when source === 'bespoke'). */
   bespokeDecorationDescription: string;
-  /** Bespoke add-ons configured in Step 2. */
-  bespokeAddons: { id: string; name: string; unitCost: number }[];
+  /** Bespoke add-ons configured in Step 2; per-tier $/unit aligned with `pricingTiers` (edit in Step 3). */
+  bespokeAddons: BespokeAddon[];
   decorationMethods: DecorationMethod[];
 
   // Step 3 — Variants & Pricing
@@ -76,10 +128,12 @@ export interface ProductFormData {
   rushFee: number;
   minOrderQty: number;
   maxOrderQty: number | null;
-  // Freight legs
+  // Freight legs (non-APPA — admin-configured)
   supplierIsDecorator: boolean;
   freightLeg1: number;  // Supplier → Decorator (only when supplierIsDecorator = false)
   freightLeg2: number;  // Decorator → Jolly HQ (always; or Supplier/Decorator → Jolly HQ)
+  /** When source === 'appa', shipping is read-only from feed; null for other sources. */
+  appaFreight: AppaFreightFromFeed | null;
   // MOQ availability & below-MOQ settings
   moqAvailable: boolean;
   allowBelowMoq: boolean;
@@ -89,6 +143,10 @@ export interface ProductFormData {
 
   // Step 4 — Assets
   assets: AssetFile[];
+}
+
+export function isProposalOnlyProduct(formData: Pick<ProductFormData, 'source' | 'isProposalOnly'>): boolean {
+  return formData.source === 'proposal-only' || formData.isProposalOnly;
 }
 
 export interface StepInfo {
@@ -110,6 +168,7 @@ export const INITIAL_FORM_DATA: ProductFormData = {
   description: '',
   isNonPublic: false,
   isProposalOnly: false,
+  liveOnWebsite: false,
   primaryDecorationMethod: '',
   primaryDecoratorSupplier: '',
   bespokeDecorationDescription: '',
@@ -133,6 +192,7 @@ export const INITIAL_FORM_DATA: ProductFormData = {
   supplierIsDecorator: false,
   freightLeg1: 0.50,
   freightLeg2: 0.30,
+  appaFreight: null,
   moqAvailable: true,
   allowBelowMoq: false,
   belowMoqSurchargeType: 'none',
@@ -209,109 +269,32 @@ export const DEFAULT_PRICE_CURVE: PricingTier[] = [
   { id: 'default-4', minQty: 250, maxQty: null, unitCost: 3.80 },
 ];
 
-// ─── Price Curve Template ─────────────────────────────────────────────────────
-
-export interface PriceCurveTemplate {
-  id: string;
-  name: string;
-  description: string;
-  isDefault: boolean;
-  isBuiltIn: boolean;
-  createdAt: string;
-  updatedAt: string;
-  tiers: PricingTier[];
-}
-
-const SEED_TEMPLATES: PriceCurveTemplate[] = [
-  {
-    id: 'tpl-standard',
-    name: 'Standard Price Curve',
-    description: 'Default 4-tier curve for general promotional products.',
-    isDefault: true,
-    isBuiltIn: true,
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2025-01-01T00:00:00Z',
-    tiers: [
-      { id: 's1', minQty: 1,   maxQty: 49,  unitCost: 6.80 },
-      { id: 's2', minQty: 50,  maxQty: 99,  unitCost: 5.20 },
-      { id: 's3', minQty: 100, maxQty: 249, unitCost: 4.20 },
-      { id: 's4', minQty: 250, maxQty: null, unitCost: 3.80 },
-    ],
-  },
-  {
-    id: 'tpl-high-volume',
-    name: 'High Volume',
-    description: 'Aggressive 5-tier pricing for large-run corporate orders.',
-    isDefault: false,
-    isBuiltIn: true,
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2025-01-01T00:00:00Z',
-    tiers: [
-      { id: 'h1', minQty: 1,    maxQty: 99,   unitCost: 7.50 },
-      { id: 'h2', minQty: 100,  maxQty: 249,  unitCost: 5.80 },
-      { id: 'h3', minQty: 250,  maxQty: 499,  unitCost: 4.50 },
-      { id: 'h4', minQty: 500,  maxQty: 999,  unitCost: 3.60 },
-      { id: 'h5', minQty: 1000, maxQty: null, unitCost: 2.90 },
-    ],
-  },
-  {
-    id: 'tpl-premium',
-    name: 'Premium Products',
-    description: 'Higher unit costs for premium branded items with fewer tiers.',
-    isDefault: false,
-    isBuiltIn: true,
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2025-01-01T00:00:00Z',
-    tiers: [
-      { id: 'p1', minQty: 1,   maxQty: 49,  unitCost: 18.00 },
-      { id: 'p2', minQty: 50,  maxQty: 199, unitCost: 14.50 },
-      { id: 'p3', minQty: 200, maxQty: null, unitCost: 12.00 },
-    ],
-  },
-  {
-    id: 'tpl-economy',
-    name: 'Economy Range',
-    description: '6-tier curve with graduated volume discounts for low-cost items.',
-    isDefault: false,
-    isBuiltIn: true,
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2025-01-01T00:00:00Z',
-    tiers: [
-      { id: 'e1', minQty: 1,   maxQty: 24,  unitCost: 3.20 },
-      { id: 'e2', minQty: 25,  maxQty: 49,  unitCost: 2.60 },
-      { id: 'e3', minQty: 50,  maxQty: 99,  unitCost: 2.10 },
-      { id: 'e4', minQty: 100, maxQty: 249, unitCost: 1.75 },
-      { id: 'e5', minQty: 250, maxQty: 499, unitCost: 1.40 },
-      { id: 'e6', minQty: 500, maxQty: null, unitCost: 1.10 },
-    ],
-  },
-];
-
-const TEMPLATES_KEY = 'jolly_price_curve_templates';
-
-export function getTemplates(): PriceCurveTemplate[] {
-  try {
-    const stored = localStorage.getItem(TEMPLATES_KEY);
-    if (stored) return JSON.parse(stored) as PriceCurveTemplate[];
-  } catch {}
-  return SEED_TEMPLATES;
-}
-
-export function saveTemplates(templates: PriceCurveTemplate[]): void {
-  try {
-    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
-    // Keep legacy key in sync with the default template
-    const def = templates.find(t => t.isDefault) ?? templates[0];
-    if (def) localStorage.setItem('jolly_price_curve', JSON.stringify(def.tiers));
-  } catch {}
-}
+/** Legacy multi-template storage (pre–single-tier Settings). Migrated once into `jolly_price_curve`. */
+const LEGACY_TEMPLATES_KEY = 'jolly_price_curve_templates';
 
 export function getGlobalPriceCurve(): PricingTier[] {
   try {
     const stored = localStorage.getItem('jolly_price_curve');
-    if (stored) return JSON.parse(stored) as PricingTier[];
+    if (stored) {
+      const parsed = JSON.parse(stored) as PricingTier[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((t) => ({ ...t }));
+      }
+    }
+    const legacy = localStorage.getItem(LEGACY_TEMPLATES_KEY);
+    if (legacy) {
+      const arr = JSON.parse(legacy) as { isDefault?: boolean; tiers?: PricingTier[] }[];
+      if (Array.isArray(arr)) {
+        const def = arr.find((x) => x.isDefault) ?? arr[0];
+        if (def?.tiers && def.tiers.length > 0) {
+          const tiers = def.tiers.map((t) => ({ ...t }));
+          saveGlobalPriceCurve(tiers);
+          return tiers;
+        }
+      }
+    }
   } catch {}
-  return DEFAULT_PRICE_CURVE;
+  return DEFAULT_PRICE_CURVE.map((t) => ({ ...t }));
 }
 
 export function saveGlobalPriceCurve(tiers: PricingTier[]): void {

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Search, FileText, FolderOpen, Settings, User, Package, Printer, RefreshCw, Users, DollarSign, ShieldCheck, BarChart3, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Search, FileText, FolderOpen, Settings, User, Package, Printer, DollarSign, ShieldCheck, BarChart3, ClipboardList } from 'lucide-react';
 import { RoleSwitcher } from './RoleSwitcher';
 import { UserRole } from '../types';
 import { Link, useLocation } from 'react-router';
@@ -22,15 +22,14 @@ export function LeftSidebar({ currentRole, onRoleChange }: LeftSidebarProps) {
   
   const navItems: NavItem[] = currentRole === 'admin' 
     ? [
-        { name: 'Dashboard', icon: <LayoutDashboard size={18} />, active: location.pathname === '/dashboard', path: '/dashboard' },
+        { name: 'Catalogue health', icon: <LayoutDashboard size={18} />, active: location.pathname === '/dashboard', path: '/dashboard' },
         { name: 'Products', icon: <Package size={18} />, active: location.pathname === '/' || location.pathname.startsWith('/product'), path: '/' },
         { name: 'Decorators', icon: <Printer size={18} />, active: location.pathname === '/decorators', path: '/decorators' },
-        { name: 'APPA Sync', icon: <RefreshCw size={18} />, active: location.pathname === '/appa-sync', path: '/appa-sync' },
-        { name: 'Users', icon: <Users size={18} />, active: location.pathname === '/users', path: '/users' },
+        { name: 'Settings', icon: <Settings size={18} />, active: location.pathname === '/settings', path: '/settings' },
       ]
     : currentRole === 'finance'
     ? [
-        { name: 'Dashboard', icon: <LayoutDashboard size={18} />, active: location.pathname === '/dashboard', path: '/dashboard' },
+        { name: 'Catalogue health', icon: <LayoutDashboard size={18} />, active: location.pathname === '/dashboard', path: '/dashboard' },
         { name: 'Pricing Rules', icon: <DollarSign size={18} />, active: location.pathname === '/pricing-rules', path: '/pricing-rules' },
         { name: 'Margin Audit', icon: <ShieldCheck size={18} />, active: location.pathname === '/margin-audit', path: '/margin-audit' },
         { name: 'Reports', icon: <BarChart3 size={18} />, active: location.pathname === '/reports', path: '/reports' },
@@ -38,13 +37,13 @@ export function LeftSidebar({ currentRole, onRoleChange }: LeftSidebarProps) {
       ]
     : currentRole === 'sales'
     ? [
-        { name: 'Dashboard', icon: <LayoutDashboard size={18} />, active: location.pathname === '/dashboard', path: '/dashboard' },
+        { name: 'Catalogue health', icon: <LayoutDashboard size={18} />, active: location.pathname === '/dashboard', path: '/dashboard' },
         { name: 'Product Catalogue', icon: <Search size={18} />, active: location.pathname === '/' || location.pathname.startsWith('/product'), path: '/' },
         { name: 'My Proposals', icon: <ClipboardList size={18} />, active: location.pathname.startsWith('/proposals'), badge: 3, path: '/proposals' },
         { name: 'My Quotes', icon: <FileText size={18} />, active: location.pathname === '/quotes', path: '/quotes' },
       ]
     : [
-        { name: 'Dashboard', icon: <LayoutDashboard size={18} />, active: location.pathname === '/dashboard', path: '/dashboard' },
+        { name: 'Catalogue health', icon: <LayoutDashboard size={18} />, active: location.pathname === '/dashboard', path: '/dashboard' },
         { name: 'Product Catalogue', icon: <Search size={18} />, active: location.pathname === '/' || location.pathname.startsWith('/product'), path: '/' },
         { name: 'My Proposals', icon: <ClipboardList size={18} />, active: location.pathname.startsWith('/proposals'), badge: 3, path: '/proposals' },
         { name: 'My Quotes', icon: <FileText size={18} />, active: location.pathname === '/quotes', path: '/quotes' },

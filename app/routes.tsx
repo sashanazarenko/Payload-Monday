@@ -10,6 +10,7 @@ import { ProposalBuilder } from './pages/ProposalBuilder';
 import { DecoratorMatrix } from './pages/DecoratorMatrix';
 import { ReactAdminView } from './pages/ReactAdminView';
 import { UnderConstruction } from './pages/UnderConstruction';
+import { PriceCurveSettings } from './pages/PriceCurveSettings';
 
 export const router = createBrowserRouter([
   {
@@ -55,6 +56,10 @@ export const router = createBrowserRouter([
   {
     path: '/admin-react',
     element: <ReactAdminView />,
+  },
+  {
+    path: '/settings',
+    element: <PriceCurveSettings />,
   },
   {
     path: '*',

@@ -36,28 +36,27 @@ Admin view means the user is operating as `Catalogue Admin` with full admin work
 ### Default Entry
 
 - Default admin landing route: `/` (Product Catalogue).
-- Dashboard route remains available at `/dashboard`.
+- Catalogue health route remains available at `/dashboard` (sidebar label matches the page title).
 
 ### Admin Navigation (Required)
 
 The following primary navigation items must be available for Admin:
 
-1. Dashboard (`/dashboard`)
+1. Catalogue health (`/dashboard`) — core KPI cards, incomplete-products queue, **APPA sync status in the page header**, and conflict resolution (single page).
 2. Products (`/`)
 3. Decorators (`/decorators`)
-4. APPA Sync (`/appa-sync`)
-5. Users (`/users`) - may be placeholder route but menu entry must exist
+4. Settings (`/settings`) — **default price tiers** only: a single editable MOQ / unit-cost ladder (no named templates, no duplicate flow). Persisted for the catalogue; new products load this ladder as the Step 3 starting point.
 
-Stage note:
-- Settings page is removed from stage navigation and stage routes.
+- Legacy URL `/appa-sync` redirects to `/dashboard?focus=appa` (scrolls to the APPA sync block in the page header).
 
 ## Functional Requirements (Admin)
 
-## FR-1 Dashboard
+## FR-1 Catalogue health (`/dashboard`)
 
-- Catalogue health overview is visible.
-- Quick actions route correctly to target modules.
-- Incomplete/at-risk indicators are visible and actionable.
+- Core KPI cards are visible (active products, pending review, APPA conflicts, quoted products).
+- In the main content (below KPIs), **Work queues** appears as a single card with a **segmented control** (two equal segments) for **incomplete products** and **APPA conflicts**, each with a compact numeric count badge. Only **one** queue table is visible at a time; the control switches the active panel and indicates selection.
+- The active table scrolls inside a fixed-height area with a **sticky header** to limit long page scroll.
+- APPA **monitoring** (last run summary, manual sync trigger) lives in the **catalogue health page header** beside the title; **conflict triage** (filter tabs and **per-row** resolve actions only) stays in Work queues on the same page; the incomplete-products queue uses **per-row** actions only (no row multi-select or bulk bar). Conflict count in KPIs stays consistent with the unresolved queue.
 
 ## FR-2 Product Catalogue
 
@@ -75,8 +74,11 @@ Stage note:
 
 - Multi-step workflow is available end-to-end.
 - Validation, review, and activation gating are intact.
-- Pricing tiers are entered manually in Step 3 (no Settings template dependency in stage).
-- **Pricing & Tiers (Step 3)** must render without runtime errors; tier min/max/unit cost inputs are always editable when MOQ availability is on, and the preview tier index stays in range when tiers are added or removed.
+- **Default pricing tiers** from **Settings** (`/settings`) seed Step 3 when starting **Add Product**; tiers remain fully editable in the wizard.
+- **Pricing & Tiers (Step 3)** must render without runtime errors; tier min/max/unit cost inputs are always editable, and the preview tier index stays in range when tiers are added or removed.
+- **Freight (Step 3)**: For **APPA** product type, shipping lines from the feed (e.g. per-order “Shipping & Handling”) are shown read-only; the sell-price preview amortises that per-order amount over the selected tier’s representative quantity. For **non-APPA** types (standard, bespoke, proposal-only), admins configure **Freight Allocation** manually (supplier-is-decorator toggle and per-unit leg fields).
+- **Assets (Step 4)**: **Website** tile, hover, and variant images are optional unless **Live on website** is enabled; enabling live requires all three slots to have at least one uploaded file (the toggle cannot stay on if requirements are not met, and removing a required image turns live off). **Proposal-only** products require at least one **blank** product image (validation error if missing). Decoration method assets remain per method in Step 4.
+- **Bespoke add-ons (Step 2 + Step 3)**: Add-on options are named in Step 2; **$/unit per add-on is captured for each MOQ / base-cost tier** in Step 3 so add-on cost scales with the same quantity breaks as the base product. Adding or removing tiers updates add-on tier columns; sell-price preview includes combined bespoke add-ons for the selected tier.
 
 ## FR-5 Decorator Management
 
@@ -85,14 +87,15 @@ Stage note:
 
 ## FR-6 APPA Sync
 
-- Sync dashboard and conflict triage are available.
-- Row-level and bulk conflict decisions are available.
+- **Location:** Sync monitoring appears in the **catalogue health page header** on `/dashboard` (not a separate primary nav item). `/appa-sync` redirects with `?focus=appa` (scroll/focus that header block).
+- Conflict triage remains in Work queues on the same page.
+- Row-level conflict decisions are available (no bulk / multi-select on the dashboard tables).
 
 ## FR-7 Pricing Governance
 
 - Pricing rules remain accessible to Admin.
-- Stage does not expose Settings/Price Curve Templates as a standalone page.
-- Tier configuration happens inside product creation flow (`/products/new`, Step 3).
+- **Settings** (`/settings`) exposes **one** global default tier ladder (no multi-template list, no duplicate). Changes are not retroactive to existing products.
+- Tier configuration is refined inside product creation (`/products/new`, Step 3) starting from that default.
 
 ## UI Specification
 
@@ -145,7 +148,7 @@ Admin view is considered ready when all are true:
 
 ## Open Decisions (Track Explicitly)
 
-- OD-1: Should `/users` be functional in stage MVP or remain placeholder?
+- OD-1: Users is omitted from stage admin navigation; should `/users` remain reachable (direct URL) as placeholder or be removed?
 - OD-2: At what milestone should `/admin-react` replace `/` as default admin landing?
 - OD-3: Which modules migrate first to React-Admin (recommended: Products -> Decorators -> APPA)?
 

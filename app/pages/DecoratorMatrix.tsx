@@ -27,7 +27,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  Download,
   ArrowUpDown,
   Phone,
   Mail,
@@ -611,9 +610,6 @@ export function DecoratorMatrix() {
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 16px', borderRadius: '6px', border: '1px solid var(--jolly-border)', backgroundColor: 'white', color: 'var(--jolly-text-body)', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
-              <Download size={15} /> Export
-            </button>
             <button onClick={() => setShowAddModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 20px', borderRadius: '6px', border: 'none', backgroundColor: 'var(--jolly-primary)', color: 'white', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
               <Plus size={15} /> Add Decorator
             </button>
