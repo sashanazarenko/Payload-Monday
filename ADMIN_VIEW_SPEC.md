@@ -77,6 +77,7 @@ Stage note:
 - Multi-step workflow is available end-to-end.
 - Validation, review, and activation gating are intact.
 - Pricing tiers are entered manually in Step 3 (no Settings template dependency in stage).
+- **Pricing & Tiers (Step 3)** must render without runtime errors; tier min/max/unit cost inputs are always editable when MOQ availability is on, and the preview tier index stays in range when tiers are added or removed.
 
 ## FR-5 Decorator Management
 

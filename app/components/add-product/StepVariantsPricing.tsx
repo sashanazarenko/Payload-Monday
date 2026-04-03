@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, X, Edit, Trash2, Info, AlertTriangle, Ban, Truck, Link2, Pencil } from 'lucide-react';
 import { ProductFormData, Variant, PricingTier, DECORATION_METHODS_LIST } from './types';
 import { BelowMoqSurcharge } from './BelowMoqSurcharge';
@@ -21,6 +21,11 @@ export function StepVariantsPricing({ formData, onUpdate, currentRole, errors }:
   const { variants, pricingTiers, marginTarget, marginFloor, rushFee, minOrderQty, maxOrderQty,
     moqAvailable, allowBelowMoq, belowMoqSurchargeType, belowMoqSurchargeValue,
     decorationMethods } = formData;
+
+  useEffect(() => {
+    if (pricingTiers.length === 0) return;
+    setPreviewQtyIndex((i) => Math.min(i, Math.max(0, pricingTiers.length - 1)));
+  }, [pricingTiers.length]);
   const isBespoke = formData.source === 'bespoke';
   const bespokeAddons = formData.bespokeAddons ?? [];
 
@@ -410,40 +415,25 @@ export function StepVariantsPricing({ formData, onUpdate, currentRole, errors }:
                         T{index + 1}
                       </td>
                       <td className="py-2 px-4">
-                        {isLocked ? (
-                          <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--jolly-text-body)', padding: '0 4px' }}>{tier.minQty}</span>
-                        ) : (
                         <input
                           type="number"
                           value={tier.minQty}
-                          onChange={(e) => handleTierChange(tier.id, 'minQty', parseInt(e.target.value) || 0)}
+                          onChange={(e) => handleTierChange(tier.id, 'minQty', parseInt(e.target.value, 10) || 0)}
                           className="w-full px-3 py-1.5"
                           style={{ ...inputStyle, height: '32px', width: '120px' }}
                         />
-                        )}
                       </td>
                       <td className="py-2 px-4">
-                        {isLocked ? (
-                          <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--jolly-text-body)', padding: '0 4px' }}>{tier.maxQty ?? '∞'}</span>
-                        ) : (
                         <input
                           type="number"
                           value={tier.maxQty ?? ''}
-                          onChange={(e) => handleTierChange(tier.id, 'maxQty', e.target.value ? parseInt(e.target.value) : null)}
+                          onChange={(e) => handleTierChange(tier.id, 'maxQty', e.target.value ? parseInt(e.target.value, 10) : null)}
                           placeholder="No limit"
                           className="w-full px-3 py-1.5"
                           style={{ ...inputStyle, height: '32px', width: '120px' }}
                         />
-                        )}
                       </td>
                       <td className="py-2 px-4">
-                        {isLocked ? (
-                          <div className="flex items-center gap-1">
-                            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--jolly-text-body)' }}>
-                              ${tier.unitCost.toFixed(2)}
-                            </span>
-                          </div>
-                        ) : (
                         <div className="flex items-center gap-1">
                           <span style={{ color: 'var(--jolly-text-disabled)', fontSize: '14px' }}>$</span>
                           <input
@@ -455,7 +445,6 @@ export function StepVariantsPricing({ formData, onUpdate, currentRole, errors }:
                             style={{ ...inputStyle, height: '32px', width: '120px' }}
                           />
                         </div>
-                        )}
                       </td>
                       {/* Source badge */}
                       <td className="py-2 px-4">
@@ -884,7 +873,7 @@ export function StepVariantsPricing({ formData, onUpdate, currentRole, errors }:
                     Sell price unavailable until decoration is configured
                   </p>
                   <p style={{ fontSize: '12px', color: 'var(--jolly-text-disabled)', margin: '2px 0 0' }}>
-                    Complete <strong>Step 3 — Decoration</strong> to unlock the full sell price preview and margin check.
+                    Complete <strong>Step 2 — Decoration</strong> to unlock the full sell price preview and margin check.
                   </p>
                 </div>
               </div>
