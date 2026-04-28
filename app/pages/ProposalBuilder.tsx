@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, Fragment } from 'react';
 import { LeftSidebar } from '../components/LeftSidebar';
 import { useRole } from '../context/RoleContext';
+import { Link, useLocation } from 'react-router';
+import { Button } from '@payloadcms/ui';
 import {
   ChevronDown,
   ChevronRight,
@@ -24,11 +26,23 @@ import {
 
 // --- Types ---
 
-type ProposalStatus = 'Draft' | 'Sent' | 'Approved' | 'Won' | 'Lost';
+type ProposalStatus = 'Design request' | 'Draft' | 'Sent' | 'Approved' | 'Won' | 'Lost';
+
+type OpportunityTier = '' | 'Strategic $100K+' | 'Gold $50K+' | 'Silver $10K - $50K' | 'Bronze $2.5K - $10K' | 'Copper <$2.5K';
+type ProposalTemplate = '' | 'Standard' | 'HLC - Items' | 'HLC - Product Collage';
+type ProductDesignType = '' | 'Custom design' | 'Unbranded';
+type DesignFilesType = '' | 'Provided' | 'Requested' | 'Not available';
+type PricingSpreadsheetType = '' | 'Required' | 'Not Required';
+type PriceBreak = '10' | '25' | '50' | '100' | '250' | '500' | '1000';
 
 interface LineItem {
   id: string;
   product: string;
+  productLink: string;
+  requiresSecondDecoration: boolean;
+  priceBreak: number;
+  quoteNotes: string;
+  designNotes: string;
   supplier: string;
   sku: string;
   source: 'APPA' | 'Manual' | 'Proposal-Only';
@@ -72,6 +86,11 @@ const initialLineItems: LineItem[] = [
   {
     id: '1',
     product: 'Metro Tote Bag',
+    productLink: '',
+    requiresSecondDecoration: false,
+    priceBreak: 100,
+    quoteNotes: '',
+    designNotes: '',
     supplier: 'AS Colour',
     sku: 'AS-CT001',
     source: 'APPA',
@@ -90,6 +109,11 @@ const initialLineItems: LineItem[] = [
   {
     id: '2',
     product: 'Custom Embroidered Cap — Client X',
+    productLink: '',
+    requiresSecondDecoration: false,
+    priceBreak: 100,
+    quoteNotes: '',
+    designNotes: '',
     supplier: 'Headwear Pros',
     sku: 'HP-EMB-042',
     source: 'Proposal-Only',
@@ -108,6 +132,11 @@ const initialLineItems: LineItem[] = [
   {
     id: '3',
     product: 'Slim Bottle 500ml',
+    productLink: '',
+    requiresSecondDecoration: true,
+    priceBreak: 250,
+    quoteNotes: '',
+    designNotes: '',
     supplier: 'DrinkTech AU',
     sku: 'DT-SB500',
     source: 'APPA',
@@ -126,6 +155,11 @@ const initialLineItems: LineItem[] = [
   {
     id: '4',
     product: 'Premium Pen Set',
+    productLink: '',
+    requiresSecondDecoration: false,
+    priceBreak: 50,
+    quoteNotes: '',
+    designNotes: '',
     supplier: 'WriteFine Co',
     sku: 'WF-PPS-12',
     source: 'Manual',
@@ -155,6 +189,7 @@ const searchProducts: SearchProduct[] = [
 ];
 
 const statusColors: Record<ProposalStatus, { bg: string; text: string }> = {
+  'Design request': { bg: '#F3E8FF', text: '#7C3AED' },
   Draft: { bg: '#F2F2F2', text: '#888888' },
   Sent: { bg: '#EBF3FB', text: '#1F5C9E' },
   Approved: { bg: '#E8F5E9', text: '#217346' },
@@ -162,8 +197,9 @@ const statusColors: Record<ProposalStatus, { bg: string; text: string }> = {
   Lost: { bg: '#FFEBEE', text: '#C0392B' },
 };
 
-const allStatuses: ProposalStatus[] = ['Draft', 'Sent', 'Approved', 'Won', 'Lost'];
+const allStatuses: ProposalStatus[] = ['Design request', 'Draft', 'Sent', 'Approved', 'Won', 'Lost'];
 const searchCategories = ['All', 'Bags', 'Headwear', 'Drinkware', 'Tech', 'Stationery', 'Accessories', 'Apparel'];
+const allPriceBreaks: PriceBreak[] = ['10', '25', '50', '100', '250', '500', '1000'];
 
 // --- Helpers ---
 
@@ -209,9 +245,11 @@ function SourceBadge({ source }: { source: 'APPA' | 'Manual' | 'Proposal-Only' }
 function StatusDropdown({
   status,
   onChange,
+  statuses,
 }: {
   status: ProposalStatus;
   onChange: (s: ProposalStatus) => void;
+  statuses: ProposalStatus[];
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -251,7 +289,7 @@ function StatusDropdown({
             boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
           }}
         >
-          {allStatuses.map((s) => (
+          {statuses.map((s) => (
             <button
               key={s}
               onClick={() => {
@@ -487,15 +525,68 @@ function ProductSearchSlideOver({
 
 // --- Main Component ---
 
-export function ProposalBuilder() {
+export function ProposalBuilder({
+  flow = 'proposal',
+}: {
+  flow?: 'proposal' | 'design-request';
+}) {
+  const isDesignRequestFlow = flow === 'design-request';
+  const location = useLocation();
+  const isNewEntity = location.pathname.endsWith('/new');
+  const statusOptions: ProposalStatus[] = isDesignRequestFlow
+    ? allStatuses
+    : ['Draft', 'Sent', 'Approved', 'Won', 'Lost'];
   const { currentRole, setCurrentRole } = useRole();
-  const [status, setStatus] = useState<ProposalStatus>('Draft');
-  const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems);
+  const [status, setStatus] = useState<ProposalStatus>(
+    isDesignRequestFlow ? 'Design request' : 'Draft'
+  );
+  const [lineItems, setLineItems] = useState<LineItem[]>(
+    () => (isDesignRequestFlow && isNewEntity ? [] : initialLineItems)
+  );
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [internalNotes, setInternalNotes] = useState('');
-  const [clientNotes, setClientNotes] = useState('');
-  const [attachments, setAttachments] = useState<string[]>(['Apex_Brand_Guidelines_v3.pdf', 'Cap_Mockup_v2.png']);
+  const [internalNotes, setInternalNotes] = useState(isDesignRequestFlow && isNewEntity ? '' : '');
+  const [clientNotes, setClientNotes] = useState(isDesignRequestFlow && isNewEntity ? '' : '');
+  const [attachments, setAttachments] = useState<string[]>(
+    isDesignRequestFlow && isNewEntity ? [] : ['Apex_Brand_Guidelines_v3.pdf', 'Cap_Mockup_v2.png']
+  );
+  const [opportunityTier, setOpportunityTier] = useState<OpportunityTier>(
+    isDesignRequestFlow && isNewEntity ? '' : 'Silver $10K - $50K'
+  );
+  const [proposalTemplate, setProposalTemplate] = useState<ProposalTemplate>(
+    isDesignRequestFlow && isNewEntity ? '' : 'Standard'
+  );
+  const [productDesign, setProductDesign] = useState<ProductDesignType>(
+    isDesignRequestFlow && isNewEntity ? '' : 'Custom design'
+  );
+  const [designFiles, setDesignFiles] = useState<DesignFilesType>(
+    isDesignRequestFlow && isNewEntity ? '' : 'Requested'
+  );
+  const [pricingSpreadsheet, setPricingSpreadsheet] = useState<PricingSpreadsheetType>(
+    isDesignRequestFlow && isNewEntity ? '' : 'Required'
+  );
+  const [requiredPriceBreaks, setRequiredPriceBreaks] = useState<PriceBreak[]>(
+    isDesignRequestFlow && isNewEntity ? [] : ['10', '25', '50', '100', '250', '500', '1000']
+  );
+  type TabKey =
+    | 'details'
+    | 'design-request'
+    | 'line-items'
+    | 'inventory-items'
+    | 'quantities'
+    | 'shipments'
+    | 'billing';
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    isDesignRequestFlow ? 'design-request' : 'details'
+  );
+  const [isEditing, setIsEditing] = useState(isNewEntity);
+  const [entityId] = useState(isNewEntity ? '' : 'HTFWTM20');
+  const [entityTitle, setEntityTitle] = useState(isNewEntity ? '' : 'Metro Merch Pack — Apex Financial');
+  const [customerName, setCustomerName] = useState(isNewEntity ? '' : 'Apex Financial');
+  const [contactName, setContactName] = useState(isNewEntity ? '' : 'James Wren');
+  const [contactEmail, setContactEmail] = useState(isNewEntity ? '' : 'james.wren@apex.com.au');
+  const [eventName, setEventName] = useState(isNewEntity ? '' : 'Q1 Staff Welcome Kit');
+  const [dueDate, setDueDate] = useState(isNewEntity ? '' : '2026-03-20');
 
   const hasMarginIssue = lineItems.some((item) => item.margin < item.marginFloor);
 
@@ -534,6 +625,11 @@ export function ProposalBuilder() {
     const newItem: LineItem = {
       id: `${Date.now()}`,
       product: product.name,
+      productLink: '',
+      requiresSecondDecoration: false,
+      priceBreak: 100,
+      quoteNotes: '',
+      designNotes: '',
       supplier: product.supplier,
       sku: `SKU-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
       source: product.source,
@@ -557,67 +653,59 @@ export function ProposalBuilder() {
     setAttachments((a) => a.filter((f) => f !== name));
   }
 
+  function toggleRequiredPriceBreak(value: PriceBreak) {
+    setRequiredPriceBreaks((prev) =>
+      prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]
+    );
+  }
+
   const minMarginFloor = lineItems.length > 0 ? Math.max(...lineItems.map((i) => i.marginFloor)) : 25;
 
   return (
     <div
-      className="flex h-screen"
+      className="flex h-screen payload-sales-root payload-project-screen project-detail-screen"
       style={{ backgroundColor: 'var(--jolly-bg)', fontFamily: 'Inter, system-ui, sans-serif' }}
     >
       <LeftSidebar currentRole={currentRole} onRoleChange={setCurrentRole} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden project-detail-main">
         {/* TOP BAR */}
         <div
-          className="bg-white border-b px-8 py-4 flex-shrink-0"
+          className="project-detail-header bg-white border-b px-8 py-4 flex-shrink-0"
           style={{ borderColor: 'var(--jolly-border)' }}
         >
           {/* Breadcrumb */}
-          <div className="flex items-center gap-1.5 mb-2">
-            <span
-              className="cursor-pointer"
-              style={{ fontSize: '13px', color: 'var(--jolly-primary)', fontWeight: 500 }}
-            >
+          <nav className="flex items-center gap-1.5 mb-2" aria-label="Breadcrumb">
+            <Link to="/proposals" style={{ fontSize: '13px', color: 'var(--jolly-primary)', fontWeight: 500, textDecoration: 'none' }}>
               My Proposals
-            </span>
+            </Link>
             <ChevronRight size={13} style={{ color: 'var(--jolly-text-disabled)' }} />
-            <span style={{ fontSize: '13px', color: 'var(--jolly-text-disabled)' }}>
-              Proposal #PRO-2024-0087
-            </span>
-          </div>
+            <span style={{ fontSize: '13px', color: 'var(--jolly-text-disabled)' }}>{entityId ? `Proposal #${entityId}` : 'New Entity'}</span>
+          </nav>
           {/* Title row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1
-                style={{
-                  fontSize: '24px',
-                  fontWeight: 700,
-                  color: 'var(--jolly-text-body)',
-                  lineHeight: '1.2',
-                  margin: 0,
-                }}
-              >
-                Metro Merch Pack — Apex Financial
-              </h1>
-              <StatusDropdown status={status} onChange={setStatus} />
+          <div className="flex items-center justify-between project-detail-title-row">
+            <div className="flex items-center gap-4 project-detail-title-group">
+              {isEditing ? (
+                <input
+                  value={entityTitle}
+                  onChange={(e) => setEntityTitle(e.target.value)}
+                  placeholder={isDesignRequestFlow ? 'New Design Request title' : 'New Proposal title'}
+                  style={{ height: '38px', width: '100%', maxWidth: '420px', minWidth: '220px', border: '1px solid var(--jolly-border)', borderRadius: '6px', padding: '0 12px', fontSize: '22px', fontWeight: 700 }}
+                />
+              ) : (
+                <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--jolly-text-body)', lineHeight: '1.2', margin: 0 }}>
+                  {entityTitle || 'Untitled'}
+                </h1>
+              )}
+              <StatusDropdown status={status} onChange={setStatus} statuses={statusOptions} />
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                className="flex items-center gap-2"
-                style={{
-                  height: '36px',
-                  padding: '0 16px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--jolly-border)',
-                  backgroundColor: 'white',
-                  color: 'var(--jolly-primary)',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                <FileText size={14} /> Preview as PDF
-              </button>
+            <div className="flex items-center gap-3 project-detail-actions">
+              <Button buttonStyle="secondary" size="small" onClick={() => setIsEditing((prev) => !prev)}>
+                {isEditing ? 'Save' : 'Edit'}
+              </Button>
+              <Button buttonStyle="secondary" size="small">
+                <span className="inline-flex items-center gap-2"><FileText size={14} /> Preview as PDF</span>
+              </Button>
               <div className="relative group">
                 <button
                   className="flex items-center gap-2"
@@ -658,14 +746,55 @@ export function ProposalBuilder() {
           </div>
         </div>
 
+        <div className="bg-white border-b px-8 project-detail-tabsbar">
+          <div className="flex items-center gap-6 project-detail-tabs-inner" role="tablist" aria-label="Proposal sections">
+            {(isDesignRequestFlow
+              ? [
+                  { key: 'design-request', label: 'Design Request' },
+                  { key: 'line-items', label: 'Products' },
+                ]
+              : [
+                  { key: 'details', label: 'Details' },
+                  { key: 'line-items', label: 'Line Items' },
+                  { key: 'inventory-items', label: 'Inventory Items' },
+                  { key: 'quantities', label: 'Quantities' },
+                  { key: 'shipments', label: 'Shipments' },
+                  { key: 'billing', label: 'Billing' },
+                ]
+            ).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as TabKey)}
+                role="tab"
+                aria-selected={activeTab === tab.key}
+                style={{
+                  height: '42px',
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: activeTab === tab.key ? 600 : 400,
+                  color: activeTab === tab.key ? 'var(--jolly-text-body)' : 'var(--jolly-text-secondary)',
+                  borderBottom: activeTab === tab.key ? '2px solid var(--jolly-primary)' : '2px solid transparent',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* MAIN CONTENT: Two column */}
-        <div className="flex-1 flex overflow-hidden">
+        <fieldset disabled={!isEditing} style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}>
+        <div className="flex-1 min-h-0 min-w-0 flex overflow-hidden project-detail-body">
           {/* LEFT SUMMARY PANEL */}
+          {(activeTab === 'details' || activeTab === 'design-request') && (
           <div
-            className="flex-shrink-0 overflow-auto p-5 flex flex-col gap-4"
+            className="project-detail-left-panel min-h-0 flex-shrink-0 overflow-auto p-5 flex flex-col gap-4"
             style={{ width: '300px', backgroundColor: 'var(--jolly-bg)' }}
           >
             {/* Client Block */}
+            {!isDesignRequestFlow && (
             <div
               className="bg-white rounded p-4"
               style={{
@@ -697,18 +826,14 @@ export function ProposalBuilder() {
                   <Pencil size={13} style={{ color: 'var(--jolly-text-disabled)' }} />
                 </button>
               </div>
-              <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--jolly-text-body)' }}>
-                Apex Financial
-              </p>
-              <p style={{ fontSize: '13px', color: 'var(--jolly-text-secondary)', marginTop: '4px' }}>
-                James Wren
-              </p>
-              <p style={{ fontSize: '12px', color: 'var(--jolly-primary)', marginTop: '2px' }}>
-                james.wren@apex.com.au
-              </p>
+              <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Customer" style={{ width: '100%', height: '30px', border: '1px solid var(--jolly-border)', borderRadius: '4px', padding: '0 8px', fontSize: '13px' }} />
+              <input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Contact name" style={{ width: '100%', height: '30px', border: '1px solid var(--jolly-border)', borderRadius: '4px', padding: '0 8px', fontSize: '13px', marginTop: '6px' }} />
+              <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Contact email" style={{ width: '100%', height: '30px', border: '1px solid var(--jolly-border)', borderRadius: '4px', padding: '0 8px', fontSize: '13px', marginTop: '6px' }} />
             </div>
+            )}
 
             {/* Proposal Meta */}
+            {!isDesignRequestFlow && (
             <div
               className="bg-white rounded p-4"
               style={{
@@ -736,10 +861,10 @@ export function ProposalBuilder() {
                 </button>
               </div>
               {[
-                { label: 'Ref', value: 'PRO-2024-0087' },
-                { label: 'Created', value: '13 Mar 2026' },
-                { label: 'Due date', value: '20 Mar 2026', warn: true },
-                { label: 'Event', value: 'Q1 Staff Welcome Kit' },
+                { label: 'Ref', value: entityId || '-' },
+                { label: 'Created', value: '24 Apr 2026' },
+                { label: 'Due date', value: dueDate || '-', warn: true },
+                { label: 'Event', value: eventName || '-' },
                 { label: 'Created by', value: 'Sasha N.' },
               ].map((row) => (
                 <div
@@ -761,9 +886,125 @@ export function ProposalBuilder() {
                   </span>
                 </div>
               ))}
+              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ width: '100%', height: '30px', border: '1px solid var(--jolly-border)', borderRadius: '4px', padding: '0 8px', fontSize: '13px', marginTop: '8px' }} />
+              <input value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="Event / Project" style={{ width: '100%', height: '30px', border: '1px solid var(--jolly-border)', borderRadius: '4px', padding: '0 8px', fontSize: '13px', marginTop: '8px' }} />
             </div>
+            )}
+
+            {/* Design Request Details */}
+            {isDesignRequestFlow && activeTab === 'design-request' && (
+            <div
+              className="bg-white rounded p-4"
+              style={{
+                borderRadius: '6px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)',
+                border: '1px solid var(--jolly-border)',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: 'var(--jolly-text-disabled)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                Design Request
+              </span>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: 'var(--jolly-text-secondary)', marginBottom: '4px' }}>
+                    Opportunity / account tier
+                  </label>
+                  <select value={opportunityTier} onChange={(e) => setOpportunityTier(e.target.value as OpportunityTier)} style={{ width: '100%', height: '32px', border: '1px solid var(--jolly-border)', borderRadius: '6px', padding: '0 8px', fontSize: '13px', backgroundColor: 'white' }}>
+                    <option value="">Select account tier</option>
+                    <option>Strategic $100K+</option>
+                    <option>Gold $50K+</option>
+                    <option>Silver $10K - $50K</option>
+                    <option>Bronze $2.5K - $10K</option>
+                    <option>Copper &lt;$2.5K</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: 'var(--jolly-text-secondary)', marginBottom: '4px' }}>
+                    Proposal template
+                  </label>
+                  <select value={proposalTemplate} onChange={(e) => setProposalTemplate(e.target.value as ProposalTemplate)} style={{ width: '100%', height: '32px', border: '1px solid var(--jolly-border)', borderRadius: '6px', padding: '0 8px', fontSize: '13px', backgroundColor: 'white' }}>
+                    <option value="">Select template</option>
+                    <option>Standard</option>
+                    <option>HLC - Items</option>
+                    <option>HLC - Product Collage</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: 'var(--jolly-text-secondary)', marginBottom: '4px' }}>
+                    Product design
+                  </label>
+                  <select value={productDesign} onChange={(e) => setProductDesign(e.target.value as ProductDesignType)} style={{ width: '100%', height: '32px', border: '1px solid var(--jolly-border)', borderRadius: '6px', padding: '0 8px', fontSize: '13px', backgroundColor: 'white' }}>
+                    <option value="">Select design mode</option>
+                    <option>Custom design</option>
+                    <option>Unbranded</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: 'var(--jolly-text-secondary)', marginBottom: '4px' }}>
+                    Design files
+                  </label>
+                  <select value={designFiles} onChange={(e) => setDesignFiles(e.target.value as DesignFilesType)} style={{ width: '100%', height: '32px', border: '1px solid var(--jolly-border)', borderRadius: '6px', padding: '0 8px', fontSize: '13px', backgroundColor: 'white' }}>
+                    <option value="">Select files status</option>
+                    <option>Provided</option>
+                    <option>Requested</option>
+                    <option>Not available</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: 'var(--jolly-text-secondary)', marginBottom: '4px' }}>
+                    Pricing spreadsheet
+                  </label>
+                  <select value={pricingSpreadsheet} onChange={(e) => setPricingSpreadsheet(e.target.value as PricingSpreadsheetType)} style={{ width: '100%', height: '32px', border: '1px solid var(--jolly-border)', borderRadius: '6px', padding: '0 8px', fontSize: '13px', backgroundColor: 'white' }}>
+                    <option value="">Select requirement</option>
+                    <option>Required</option>
+                    <option>Not Required</option>
+                  </select>
+                </div>
+                {pricingSpreadsheet === 'Required' && (
+                  <div>
+                    <p style={{ fontSize: '12px', color: 'var(--jolly-text-secondary)', marginBottom: '6px' }}>
+                      Price breaks required
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {allPriceBreaks.map((breakValue) => {
+                        const selected = requiredPriceBreaks.includes(breakValue);
+                        return (
+                          <button
+                            key={breakValue}
+                            type="button"
+                            onClick={() => toggleRequiredPriceBreak(breakValue)}
+                            style={{
+                              border: selected ? '1px solid var(--jolly-primary)' : '1px solid var(--jolly-border)',
+                              backgroundColor: selected ? 'var(--jolly-surface)' : 'white',
+                              color: selected ? 'var(--jolly-primary)' : 'var(--jolly-text-secondary)',
+                              borderRadius: '999px',
+                              padding: '4px 10px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {breakValue}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            )}
 
             {/* Totals Block */}
+            {!isDesignRequestFlow && (
             <div
               className="rounded p-4"
               style={{
@@ -905,8 +1146,10 @@ export function ProposalBuilder() {
                 </button>
               )}
             </div>
+            )}
 
             {/* Internal Notes */}
+            {!isDesignRequestFlow && (
             <div
               className="bg-white rounded p-4"
               style={{
@@ -956,11 +1199,28 @@ export function ProposalBuilder() {
                 Not visible to client in PDF output.
               </p>
             </div>
+            )}
           </div>
+          )}
 
           {/* RIGHT MAIN AREA */}
-          <div className="flex-1 overflow-auto p-6 pb-24">
+          <div
+            className={`project-detail-right-panel min-h-0 flex-1 overflow-auto p-6 pb-24 ${
+              activeTab === 'line-items' ? 'is-line-items' : ''
+            }`}
+          >
+            {!isDesignRequestFlow && activeTab !== 'details' && activeTab !== 'line-items' && (
+              <div className="bg-white rounded p-6" style={{ border: '1px solid var(--jolly-border)' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--jolly-text-body)' }}>
+                  {activeTab.replace('-', ' ').replace(/\b\w/g, (m) => m.toUpperCase())}
+                </h2>
+                <p style={{ fontSize: '14px', color: 'var(--jolly-text-secondary)', marginTop: '8px' }}>
+                  This tab is ready for entity-specific fields.
+                </p>
+              </div>
+            )}
             {/* Line Items Section */}
+            {activeTab === 'line-items' && (
             <div
               className="bg-white rounded"
               style={{
@@ -994,6 +1254,9 @@ export function ProposalBuilder() {
 
               <div className="overflow-x-auto">
                 <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: '1000px' }}>
+                  <caption style={{ textAlign: 'left', padding: '12px 16px', fontSize: '13px', color: 'var(--jolly-text-secondary)' }}>
+                    Editable proposal line items with quantity, margin, and pricing controls.
+                  </caption>
                   <thead>
                     <tr style={{ backgroundColor: 'var(--jolly-header-bg)' }}>
                       {['#', 'Product', 'Variant', 'Qty', 'Decoration', 'Unit Cost', 'Margin', 'Sell Price', 'Total', ''].map(
@@ -1025,22 +1288,22 @@ export function ProposalBuilder() {
                       const isHovered = hoveredRow === item.id;
 
                       return (
-                        <tr
-                          key={item.id}
-                          onMouseEnter={() => setHoveredRow(item.id)}
-                          onMouseLeave={() => setHoveredRow(null)}
-                          style={{
-                            borderTop: '1px solid var(--jolly-border)',
-                            borderLeft: isBelowFloor ? '3px solid var(--jolly-warning)' : '3px solid transparent',
-                            backgroundColor: isBelowFloor
-                              ? '#FFFBF0'
-                              : index % 2 === 0
-                              ? '#FFFFFF'
-                              : 'var(--jolly-row-alt)',
-                            height: '72px',
-                            verticalAlign: 'top',
-                          }}
-                        >
+                        <Fragment key={item.id}>
+                          <tr
+                            onMouseEnter={() => setHoveredRow(item.id)}
+                            onMouseLeave={() => setHoveredRow(null)}
+                            style={{
+                              borderTop: '1px solid var(--jolly-border)',
+                              borderLeft: isBelowFloor ? '3px solid var(--jolly-warning)' : '3px solid transparent',
+                              backgroundColor: isBelowFloor
+                                ? '#FFFBF0'
+                                : index % 2 === 0
+                                ? '#FFFFFF'
+                                : 'var(--jolly-row-alt)',
+                              height: '72px',
+                              verticalAlign: 'top',
+                            }}
+                          >
                           {/* # */}
                           <td
                             className="px-4 py-3"
@@ -1297,7 +1560,81 @@ export function ProposalBuilder() {
                               </button>
                             </div>
                           </td>
-                        </tr>
+                          </tr>
+                          {isDesignRequestFlow && (
+                          <tr
+                            style={{
+                              borderTop: '1px dashed #E5E7EB',
+                              backgroundColor: '#FBFCFE',
+                            }}
+                          >
+                            <td colSpan={10} className="px-4 py-3">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '12px', color: 'var(--jolly-text-secondary)', marginBottom: '4px' }}>
+                                    Product link
+                                  </label>
+                                  <input
+                                    type="url"
+                                    placeholder="https://"
+                                    value={item.productLink}
+                                    onChange={(e) => updateLineItem(item.id, { productLink: e.target.value })}
+                                    style={{ width: '100%', height: '30px', border: '1px solid var(--jolly-border)', borderRadius: '4px', padding: '0 8px', fontSize: '13px' }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '12px', color: 'var(--jolly-text-secondary)', marginBottom: '4px' }}>
+                                    Price break
+                                  </label>
+                                  <select
+                                    value={item.priceBreak}
+                                    onChange={(e) => updateLineItem(item.id, { priceBreak: parseInt(e.target.value, 10) })}
+                                    style={{ width: '100%', height: '30px', border: '1px solid var(--jolly-border)', borderRadius: '4px', padding: '0 8px', fontSize: '13px', backgroundColor: 'white' }}
+                                  >
+                                    {allPriceBreaks.map((priceBreak) => (
+                                      <option key={priceBreak} value={priceBreak}>
+                                        {priceBreak}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="col-span-2">
+                                  <label className="inline-flex items-center gap-2" style={{ fontSize: '12px', color: 'var(--jolly-text-secondary)', cursor: 'pointer' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={item.requiresSecondDecoration}
+                                      onChange={(e) => updateLineItem(item.id, { requiresSecondDecoration: e.target.checked })}
+                                    />
+                                    Does it require 2nd decoration?
+                                  </label>
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '12px', color: 'var(--jolly-text-secondary)', marginBottom: '4px' }}>
+                                    Quote notes
+                                  </label>
+                                  <textarea
+                                    value={item.quoteNotes}
+                                    onChange={(e) => updateLineItem(item.id, { quoteNotes: e.target.value })}
+                                    rows={2}
+                                    style={{ width: '100%', border: '1px solid var(--jolly-border)', borderRadius: '4px', padding: '8px', fontSize: '13px', resize: 'vertical' }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '12px', color: 'var(--jolly-text-secondary)', marginBottom: '4px' }}>
+                                    Design notes
+                                  </label>
+                                  <textarea
+                                    value={item.designNotes}
+                                    onChange={(e) => updateLineItem(item.id, { designNotes: e.target.value })}
+                                    rows={2}
+                                    style={{ width: '100%', border: '1px solid var(--jolly-border)', borderRadius: '4px', padding: '8px', fontSize: '13px', resize: 'vertical' }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                          )}
+                        </Fragment>
                       );
                     })}
 
@@ -1333,8 +1670,10 @@ export function ProposalBuilder() {
                 </table>
               </div>
             </div>
+            )}
 
             {/* Proposal Notes for Client */}
+            {activeTab === 'details' && !isDesignRequestFlow && (
             <div
               className="bg-white rounded mt-6"
               style={{
@@ -1407,8 +1746,10 @@ export function ProposalBuilder() {
                 />
               </div>
             </div>
+            )}
 
             {/* Attachments */}
+            {activeTab === 'details' && !isDesignRequestFlow && (
             <div
               className="bg-white rounded mt-6"
               style={{
@@ -1483,81 +1824,85 @@ export function ProposalBuilder() {
                 )}
               </div>
             </div>
+            )}
           </div>
         </div>
+        </fieldset>
 
         {/* BOTTOM ACTION BAR */}
-        <div
-          className="flex-shrink-0 bg-white border-t px-8 py-3 flex items-center justify-between"
-          style={{ borderColor: 'var(--jolly-border)' }}
-        >
-          <button
-            className="flex items-center gap-1.5"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 500,
-              color: 'var(--jolly-text-disabled)',
-              padding: 0,
-            }}
+        {!isDesignRequestFlow && (
+          <div
+            className="flex-shrink-0 bg-white border-t px-8 py-3 flex items-center justify-between"
+            style={{ borderColor: 'var(--jolly-border)' }}
           >
-            <ArrowLeft size={14} /> Discard changes
-          </button>
-          <div className="flex items-center gap-3">
             <button
+              className="flex items-center gap-1.5"
               style={{
-                height: '36px',
-                padding: '0 16px',
-                borderRadius: '6px',
-                border: '1px solid var(--jolly-border)',
-                backgroundColor: 'white',
-                color: 'var(--jolly-text-body)',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Save Draft
-            </button>
-            <button
-              className="flex items-center gap-2"
-              style={{
-                height: '36px',
-                padding: '0 16px',
-                borderRadius: '6px',
-                border: '1px solid var(--jolly-border)',
-                backgroundColor: 'white',
-                color: 'var(--jolly-primary)',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              <FileText size={14} /> Preview PDF
-            </button>
-            <button
-              className="flex items-center gap-2"
-              style={{
-                height: '36px',
-                padding: '0 20px',
-                borderRadius: '6px',
+                background: 'none',
                 border: 'none',
-                backgroundColor: hasMarginIssue ? '#A0A0A0' : 'var(--jolly-primary)',
-                color: 'white',
+                cursor: 'pointer',
                 fontSize: '14px',
-                fontWeight: 600,
-                cursor: hasMarginIssue ? 'not-allowed' : 'pointer',
-                opacity: hasMarginIssue ? 0.7 : 1,
+                fontWeight: 500,
+                color: 'var(--jolly-text-disabled)',
+                padding: 0,
               }}
-              disabled={hasMarginIssue}
             >
-              <Send size={14} /> Send to Client
-              <ChevronRight size={14} />
+              <ArrowLeft size={14} /> Discard changes
             </button>
+            <div className="flex items-center gap-3">
+              <button
+                style={{
+                  height: '36px',
+                  padding: '0 16px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--jolly-border)',
+                  backgroundColor: 'white',
+                  color: 'var(--jolly-text-body)',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Save Draft
+              </button>
+              <button
+                className="flex items-center gap-2"
+                style={{
+                  height: '36px',
+                  padding: '0 16px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--jolly-border)',
+                  backgroundColor: 'white',
+                  color: 'var(--jolly-primary)',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <FileText size={14} /> Preview PDF
+              </button>
+              <button
+                className="flex items-center gap-2"
+                style={{
+                  height: '36px',
+                  padding: '0 20px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: hasMarginIssue ? '#A0A0A0' : 'var(--jolly-primary)',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: hasMarginIssue ? 'not-allowed' : 'pointer',
+                  opacity: hasMarginIssue ? 0.7 : 1,
+                }}
+                disabled={hasMarginIssue}
+              >
+                <Send size={14} /> Send to Client
+                <ChevronRight size={14} />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Product Search Slide-Over */}

@@ -47,11 +47,15 @@ export const router = createBrowserRouter([
   },
   {
     path: '/proposals/new',
-    element: <ProposalBuilder />,
+    element: <ProposalBuilder flow="proposal" />,
+  },
+  {
+    path: '/proposals/design-request/new',
+    element: <ProposalBuilder flow="design-request" />,
   },
   {
     path: '/proposals/:proposalId',
-    element: <ProposalBuilder />,
+    element: <ProposalBuilder flow="proposal" />,
   },
   {
     path: '/admin-react',

@@ -1,7 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, type ComponentProps } from 'react';
 import {
-  AdminContext,
-  AdminUI,
+  Admin,
   AppBar,
   DataProvider,
   Layout,
@@ -57,22 +56,22 @@ function sortAndPaginate(data: AdminRecord[], field = 'id', order = 'ASC', page 
 function buildDataProvider(): DataProvider {
   return {
     getList: async (resource, params) => {
-      if (resource !== 'products') return { data: [], total: 0 };
+      if (resource !== 'products') return { data: [], total: 0 } as any;
       const { field, order } = params.sort;
       const { page, perPage } = params.pagination;
-      return sortAndPaginate(productStore, field, order, page, perPage);
+      return sortAndPaginate(productStore, field, order, page, perPage) as any;
     },
     getOne: async (resource, params) => {
       if (resource !== 'products') throw new Error('Unknown resource');
       const row = productStore.find((item) => String(item.id) === String(params.id));
       if (!row) throw new Error('Record not found');
-      return { data: row };
+      return { data: row } as any;
     },
     getMany: async (resource, params) => {
-      if (resource !== 'products') return { data: [] };
-      return { data: productStore.filter((item) => params.ids.includes(item.id)) };
+      if (resource !== 'products') return { data: [] } as any;
+      return { data: productStore.filter((item) => params.ids.includes(item.id)) } as any;
     },
-    getManyReference: async () => ({ data: [], total: 0 }),
+    getManyReference: async () => ({ data: [], total: 0 } as any),
     create: notImplemented,
     delete: notImplemented,
     deleteMany: notImplemented,
@@ -81,7 +80,7 @@ function buildDataProvider(): DataProvider {
       const index = productStore.findIndex((item) => String(item.id) === String(params.id));
       if (index === -1) throw new Error('Record not found');
       productStore[index] = { ...productStore[index], ...params.data };
-      return { data: productStore[index] };
+      return { data: productStore[index] } as any;
     },
     updateMany: notImplemented,
   };
@@ -180,7 +179,7 @@ const BrandMenu = () => (
   </Menu>
 );
 
-const BrandLayout = (props: any) => (
+const BrandLayout = (props: ComponentProps<typeof Layout>) => (
   <Layout
     {...props}
     appBar={BrandAppBar}
@@ -258,11 +257,9 @@ export function ReactAdminView() {
 
   return (
     <Box sx={{ height: '100vh' }}>
-      <AdminContext dataProvider={dataProvider}>
-        <AdminUI theme={raTheme} layout={BrandLayout}>
-          <Resource name="products" list={ProductList} edit={ProductEdit} />
-        </AdminUI>
-      </AdminContext>
+      <Admin dataProvider={dataProvider} theme={raTheme} layout={BrandLayout}>
+        <Resource name="products" list={ProductList} edit={ProductEdit} />
+      </Admin>
     </Box>
   );
 }

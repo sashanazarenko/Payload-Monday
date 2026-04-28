@@ -1,7 +1,8 @@
-import { LayoutDashboard, Search, FileText, FolderOpen, Settings, User, Package, Printer, DollarSign, ShieldCheck, BarChart3, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Search, FileText, FolderOpen, Settings, User, Package, Printer, DollarSign, ShieldCheck, BarChart3, ClipboardList, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { RoleSwitcher } from './RoleSwitcher';
 import { UserRole } from '../types';
 import { Link, useLocation } from 'react-router';
+import { useState } from 'react';
 
 interface NavItem {
   name: string;
@@ -20,6 +21,7 @@ interface LeftSidebarProps {
 export function LeftSidebar({ currentRole, onRoleChange }: LeftSidebarProps) {
   const location = useLocation();
   const isStagePreview = true;
+  const [isCollapsed, setIsCollapsed] = useState(false);
   
   const navItems: NavItem[] = isStagePreview && currentRole === 'sales'
     ? [
@@ -64,7 +66,7 @@ export function LeftSidebar({ currentRole, onRoleChange }: LeftSidebarProps) {
 
   return (
     <div 
-      className="h-screen flex flex-col" 
+      className={`h-screen flex flex-col payload-sidebar ${isCollapsed ? 'is-collapsed' : ''}`}
       style={{ 
         width: '240px',
         backgroundColor: 'white',
@@ -72,36 +74,50 @@ export function LeftSidebar({ currentRole, onRoleChange }: LeftSidebarProps) {
       }}
     >
       {/* Logo / Header */}
-      <div className="px-6 py-5 border-b" style={{ borderColor: 'var(--jolly-border)' }}>
-        <h1 
-          className="font-bold mb-0.5" 
-          style={{ 
-            color: 'var(--jolly-primary)',
-            fontSize: '20px',
-            fontWeight: 700,
-            lineHeight: '1.2'
-          }}
-        >
-          Jolly Catalogue
-        </h1>
-        <p 
-          className="text-xs" 
-          style={{ 
-            color: 'var(--jolly-text-secondary)',
-            fontSize: '13px'
-          }}
-        >
-          {currentRole === 'admin' ? 'Catalogue Admin' : currentRole === 'finance' ? 'Finance Console' : currentRole === 'sales' ? 'Sales Console' : 'Product Management'}
-        </p>
+      <div className="px-6 py-5 border-b sidebar-brand" style={{ borderColor: 'var(--jolly-border)' }}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="sidebar-brand-title">
+            <h1 
+              className="font-bold mb-0.5" 
+              style={{ 
+                color: 'var(--jolly-primary)',
+                fontSize: '20px',
+                fontWeight: 700,
+                lineHeight: '1.2'
+              }}
+            >
+              Jolly Catalogue
+            </h1>
+            <p 
+              className="text-xs sidebar-subtitle" 
+              style={{ 
+                color: 'var(--jolly-text-secondary)',
+                fontSize: '13px'
+              }}
+            >
+              {currentRole === 'admin' ? 'Catalogue Admin' : currentRole === 'finance' ? 'Finance Console' : currentRole === 'sales' ? 'Sales Console' : 'Product Management'}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label={isCollapsed ? 'Expand navigation menu' : 'Collapse navigation menu'}
+            className="sidebar-collapse-toggle p-1.5 rounded"
+            style={{ border: '1px solid var(--jolly-border)', background: 'white', cursor: 'pointer' }}
+            onClick={() => setIsCollapsed((prev) => !prev)}
+          >
+            {isCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
+          </button>
+        </div>
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1" aria-label="Primary navigation">
         {visibleItems.map((item) => (
           <Link
             key={item.name}
             to={item.path || '/'}
-            className="w-full flex items-center gap-3 px-3 rounded transition-colors"
+            aria-current={item.active ? 'page' : undefined}
+              className={`w-full flex items-center gap-3 px-3 rounded transition-colors payload-nav-link ${item.active ? 'is-active' : ''}`}
             style={{
               backgroundColor: item.active ? 'var(--jolly-primary)' : 'transparent',
               color: item.active ? 'white' : 'var(--jolly-text-body)',
@@ -123,7 +139,7 @@ export function LeftSidebar({ currentRole, onRoleChange }: LeftSidebarProps) {
           >
             {item.icon}
             <span 
-              className="flex-1 text-left" 
+              className="flex-1 text-left sidebar-link-label" 
               style={{ 
                 fontSize: '14px',
                 fontWeight: item.active ? 600 : 500
@@ -148,12 +164,12 @@ export function LeftSidebar({ currentRole, onRoleChange }: LeftSidebarProps) {
       </nav>
 
       {/* Role Switcher */}
-      <div className="px-3 pb-3 border-t pt-3" style={{ borderColor: 'var(--jolly-border)' }}>
+      <div className="px-3 pb-3 border-t pt-3 sidebar-role-switcher" style={{ borderColor: 'var(--jolly-border)' }}>
         <RoleSwitcher currentRole={currentRole} onRoleChange={onRoleChange} />
       </div>
 
       {/* User Info */}
-      <div className="px-3 pb-4">
+      <div className="px-3 pb-4 sidebar-user-info">
         <div className="flex items-center gap-3 px-3 py-2">
           <div 
             className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" 

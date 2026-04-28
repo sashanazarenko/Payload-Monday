@@ -1157,12 +1157,12 @@ function ReviewRow({
 // ======================
 
 interface AddDecoratorModalProps {
-  open: boolean;
+  open?: boolean;
   onClose: () => void;
   onCreated: (decorator: any) => void;
 }
 
-export function AddDecoratorModal({ open, onClose, onCreated }: AddDecoratorModalProps) {
+export function AddDecoratorModal({ open = true, onClose, onCreated }: AddDecoratorModalProps) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [errors, setErrors] = useState<StepErrors>({});

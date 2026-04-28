@@ -689,12 +689,10 @@ export function StepDecoration({ formData, onUpdate, errors }: StepDecorationPro
                       {/* Print area */}
                       <div>
                         <h4 className="mb-3" style={{ fontSize: '14px', fontWeight: 600, color: 'var(--jolly-text-body)' }}>Print Area Dimensions</h4>
-                        <div className="grid grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 gap-4">
                           {[
                             { label: 'Width (mm)', field: 'printAreaWidth' },
                             { label: 'Height (mm)', field: 'printAreaHeight' },
-                            { label: 'Position X (mm)', field: 'positionX' },
-                            { label: 'Position Y (mm)', field: 'positionY' },
                           ].map(({ label, field }) => (
                             <div key={field}>
                               <label className="block mb-1" style={{ fontSize: '13px', color: 'var(--jolly-text-secondary)' }}>{label}</label>

@@ -49,7 +49,6 @@ export function ProductDetail() {
   ]);
   const [tierSaveMsg, setTierSaveMsg] = useState('');
   const [moqFields, setMoqFields] = useState<BelowMoqValues>({
-    moqAvailable: true,
     allowBelowMoq: false,
     belowMoqSurchargeType: 'flat',
     belowMoqSurchargeValue: 0,
@@ -1434,23 +1433,21 @@ export function ProductDetail() {
                     </div>
                   </label>
 
-                  {currentRole !== 'admin' && (
-                    <button
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded"
-                      style={{
-                        backgroundColor: 'var(--jolly-primary)',
-                        color: 'white',
-                        fontSize: '16px',
-                        fontWeight: 600,
-                        height: '44px',
-                        cursor: 'pointer',
-                        border: 'none'
-                      }}
-                    >
-                      Add to Proposal
-                      <ArrowRight size={20} />
-                    </button>
-                  )}
+                  <button
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded"
+                    style={{
+                      backgroundColor: 'var(--jolly-primary)',
+                      color: 'white',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      height: '44px',
+                      cursor: 'pointer',
+                      border: 'none'
+                    }}
+                  >
+                    Add to Proposal
+                    <ArrowRight size={20} />
+                  </button>
                 </div>
                 )}
               </div>

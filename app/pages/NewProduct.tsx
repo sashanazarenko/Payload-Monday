@@ -42,7 +42,7 @@ export function NewProduct() {
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   // Auto-save simulation
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleFormUpdate = useCallback((updates: Partial<ProductFormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));

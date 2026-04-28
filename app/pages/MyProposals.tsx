@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { LeftSidebar } from '../components/LeftSidebar';
 import { useRole } from '../context/RoleContext';
 import { Link } from 'react-router';
+import { useNavigate } from 'react-router';
+import { Button } from '@payloadcms/ui';
 import {
   Plus,
   Search,
@@ -20,7 +22,7 @@ import {
 
 // --- Types ---
 
-type ProposalStatus = 'Draft' | 'Sent' | 'Approved' | 'Won' | 'Lost' | 'Expired' | 'Finance Review';
+type ProposalStatus = 'Design request' | 'Draft' | 'Sent' | 'Approved' | 'Won' | 'Lost' | 'Expired' | 'Finance Review';
 
 interface Proposal {
   id: string;
@@ -38,6 +40,9 @@ interface Proposal {
   hasProposalOnly: boolean;
   createdBy: string;
 }
+
+type SortField = 'ref' | 'client' | 'event' | 'totalValue' | 'margin' | 'status' | 'dueDateObj';
+type SortDirection = 'asc' | 'desc';
 
 // --- Mock Data ---
 
@@ -207,6 +212,7 @@ const proposals: Proposal[] = [
 ];
 
 const statusConfig: Record<ProposalStatus, { bg: string; text: string; borderColor?: string }> = {
+  'Design request': { bg: '#F3E8FF', text: '#7C3AED' },
   Draft: { bg: '#F2F2F2', text: '#888888' },
   Sent: { bg: '#EBF3FB', text: '#1F5C9E' },
   Approved: { bg: '#E8F5E9', text: '#217346' },
@@ -216,7 +222,7 @@ const statusConfig: Record<ProposalStatus, { bg: string; text: string; borderCol
   'Finance Review': { bg: '#FFF8E1', text: '#7B5800', borderColor: '#F0E0A0' },
 };
 
-const allStatusFilters = ['All', 'Draft', 'Sent', 'Approved', 'Won', 'Lost', 'Expired', 'Finance Review'];
+const allStatusFilters = ['All', 'Design request', 'Draft', 'Sent', 'Approved', 'Won', 'Lost', 'Expired', 'Finance Review'];
 
 // --- Helpers ---
 
@@ -303,12 +309,15 @@ function StatusBadge({ status }: { status: ProposalStatus }) {
 
 export function MyProposals() {
   const { currentRole, setCurrentRole } = useRole();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [dateRange, setDateRange] = useState('This month');
   const [myOnly, setMyOnly] = useState(true);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortField>('dueDateObj');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   // Filter proposals
   const filtered = proposals.filter((p) => {
@@ -321,6 +330,34 @@ export function MyProposals() {
     return matchesSearch && matchesStatus;
   });
 
+  const sorted = [...filtered].sort((a, b) => {
+    const direction = sortDirection === 'asc' ? 1 : -1;
+
+    if (sortBy === 'totalValue' || sortBy === 'margin') {
+      return (a[sortBy] - b[sortBy]) * direction;
+    }
+
+    if (sortBy === 'dueDateObj') {
+      return (a.dueDateObj.getTime() - b.dueDateObj.getTime()) * direction;
+    }
+
+    return String(a[sortBy]).localeCompare(String(b[sortBy])) * direction;
+  });
+
+  function handleSort(field: SortField) {
+    if (sortBy === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortBy(field);
+    setSortDirection('asc');
+  }
+
+  function getAriaSort(field: SortField): 'ascending' | 'descending' | 'none' {
+    if (sortBy !== field) return 'none';
+    return sortDirection === 'asc' ? 'ascending' : 'descending';
+  }
+
   const pendingApprovalCount = proposals.filter((p) => p.status === 'Finance Review').length;
   const proposalOnlyCount = proposals.filter((p) => p.hasProposalOnly).length;
   const wonThisMonth = proposals.filter((p) => p.status === 'Won');
@@ -328,15 +365,15 @@ export function MyProposals() {
 
   return (
     <div
-      className="flex h-screen"
+      className="flex h-screen payload-sales-root payload-project-screen projects-list-screen"
       style={{ backgroundColor: 'var(--jolly-bg)', fontFamily: 'Inter, system-ui, sans-serif' }}
     >
       <LeftSidebar currentRole={currentRole} onRoleChange={setCurrentRole} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden projects-list-main">
         {/* TOP BAR */}
         <div
-          className="bg-white border-b px-8 py-5 flex items-center justify-between flex-shrink-0"
+          className="projects-list-header bg-white border-b px-8 py-5 flex items-center justify-between flex-shrink-0"
           style={{ borderColor: 'var(--jolly-border)' }}
         >
           <div>
@@ -355,32 +392,20 @@ export function MyProposals() {
               Manage and track your active client proposals.
             </p>
           </div>
-          <Link
-            to="/proposals/new"
-            className="flex items-center gap-2"
-            style={{
-              height: '36px',
-              padding: '0 20px',
-              borderRadius: '6px',
-              border: 'none',
-              backgroundColor: 'var(--jolly-primary)',
-              color: 'white',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-            }}
-          >
-            <Plus size={15} /> New Proposal
-          </Link>
+          <div className="flex items-center gap-2 projects-list-header-actions">
+            <Button buttonStyle="secondary" size="small" onClick={() => navigate('/proposals/design-request/new')}>
+              <span className="inline-flex items-center gap-2"><Plus size={15} /> New Design Request</span>
+            </Button>
+            <Button buttonStyle="primary" size="small" onClick={() => navigate('/proposals/new')}>
+              <span className="inline-flex items-center gap-2"><Plus size={15} /> New Proposal</span>
+            </Button>
+          </div>
         </div>
 
         {/* SCROLLABLE CONTENT */}
-        <div className="flex-1 overflow-auto px-8 py-6">
+        <div className="flex-1 min-h-0 overflow-auto px-8 py-6 projects-list-content">
           {/* KPI ROW */}
-          <div className="flex gap-4 mb-6">
+          <div className="flex gap-4 mb-6 proposals-kpi-row">
             <KpiCard label="Active Proposals" value={12} color="var(--jolly-primary)" />
             <KpiCard
               label="Awaiting Response"
@@ -412,7 +437,7 @@ export function MyProposals() {
           {/* CALLOUT BANNERS */}
           {pendingApprovalCount > 0 && (
             <div
-              className="flex items-start gap-3 p-4 rounded mb-3"
+              className="proposals-warning-banner flex items-start gap-3 p-4 rounded mb-3"
               style={{
                 backgroundColor: 'var(--jolly-warning-bg)',
                 border: '1px solid #F0E0A0',
@@ -450,7 +475,7 @@ export function MyProposals() {
 
           {proposalOnlyCount > 0 && (
             <div
-              className="flex items-start gap-3 p-4 rounded mb-4"
+              className="proposals-info-banner flex items-start gap-3 p-4 rounded mb-4"
               style={{
                 backgroundColor: '#F8F0FF',
                 border: '1px solid #E0D0F0',
@@ -488,7 +513,7 @@ export function MyProposals() {
 
           {/* FILTER / SEARCH BAR */}
           <div
-            className="bg-white rounded p-4 mb-4 flex items-center gap-4 flex-wrap"
+            className="proposals-filter-bar bg-white rounded p-4 mb-4 flex items-center gap-4 flex-wrap"
             style={{
               borderRadius: '6px',
               border: '1px solid var(--jolly-border)',
@@ -534,6 +559,9 @@ export function MyProposals() {
             <div className="relative">
               <button
                 onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+                aria-haspopup="listbox"
+                aria-expanded={statusDropdownOpen}
+                aria-label="Filter proposals by status"
                 className="flex items-center gap-2"
                 style={{
                   height: '36px',
@@ -558,6 +586,8 @@ export function MyProposals() {
                   />
                   <div
                     className="absolute top-full left-0 mt-1 bg-white rounded shadow-lg z-40 py-1"
+                    role="listbox"
+                    aria-label="Status options"
                     style={{
                       border: '1px solid var(--jolly-border)',
                       borderRadius: '6px',
@@ -670,9 +700,9 @@ export function MyProposals() {
           </div>
 
           {/* PROPOSALS TABLE */}
-          {filtered.length > 0 ? (
+          {sorted.length > 0 ? (
             <div
-              className="bg-white rounded overflow-hidden"
+              className="proposals-table-wrap bg-white rounded overflow-hidden"
               style={{
                 borderRadius: '6px',
                 border: '1px solid var(--jolly-border)',
@@ -681,38 +711,56 @@ export function MyProposals() {
             >
               <div className="overflow-x-auto">
                 <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: '1100px' }}>
+                  <caption style={{ textAlign: 'left', padding: '12px 16px', fontSize: '13px', color: 'var(--jolly-text-secondary)' }}>
+                    Proposals list with sorting, filtering, and row actions.
+                  </caption>
                   <thead>
                     <tr style={{ backgroundColor: 'var(--jolly-header-bg)' }}>
-                      {[
-                        'Ref',
-                        'Client',
-                        'Event / Project',
-                        'Products',
-                        'Total Value',
-                        'Margin',
-                        'Status',
-                        'Due',
-                        'Actions',
-                      ].map((col) => (
-                        <th
-                          key={col}
-                          className="px-4 py-3 text-left"
-                          style={{
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            color: 'var(--jolly-text-secondary)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {col}
-                        </th>
-                      ))}
+                      <th aria-sort={getAriaSort('ref')} className="px-4 py-3 text-left" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => handleSort('ref')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 'inherit' }}>
+                          Ref {sortBy === 'ref' ? (sortDirection === 'asc' ? '▲' : '▼') : '◇'}
+                        </button>
+                      </th>
+                      <th aria-sort={getAriaSort('client')} className="px-4 py-3 text-left" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => handleSort('client')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 'inherit' }}>
+                          Client {sortBy === 'client' ? (sortDirection === 'asc' ? '▲' : '▼') : '◇'}
+                        </button>
+                      </th>
+                      <th aria-sort={getAriaSort('event')} className="px-4 py-3 text-left" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => handleSort('event')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 'inherit' }}>
+                          Event / Project {sortBy === 'event' ? (sortDirection === 'asc' ? '▲' : '▼') : '◇'}
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 text-left" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                        Products
+                      </th>
+                      <th aria-sort={getAriaSort('totalValue')} className="px-4 py-3 text-left" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => handleSort('totalValue')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 'inherit' }}>
+                          Total Value {sortBy === 'totalValue' ? (sortDirection === 'asc' ? '▲' : '▼') : '◇'}
+                        </button>
+                      </th>
+                      <th aria-sort={getAriaSort('margin')} className="px-4 py-3 text-left" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => handleSort('margin')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 'inherit' }}>
+                          Margin {sortBy === 'margin' ? (sortDirection === 'asc' ? '▲' : '▼') : '◇'}
+                        </button>
+                      </th>
+                      <th aria-sort={getAriaSort('status')} className="px-4 py-3 text-left" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => handleSort('status')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 'inherit' }}>
+                          Status {sortBy === 'status' ? (sortDirection === 'asc' ? '▲' : '▼') : '◇'}
+                        </button>
+                      </th>
+                      <th aria-sort={getAriaSort('dueDateObj')} className="px-4 py-3 text-left" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => handleSort('dueDateObj')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 'inherit' }}>
+                          Due {sortBy === 'dueDateObj' ? (sortDirection === 'asc' ? '▲' : '▼') : '◇'}
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 text-left" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((p, idx) => {
+                    {sorted.map((p, idx) => {
                       const isBelowFloor = p.margin < p.marginFloor;
                       const isFinanceReview = p.status === 'Finance Review';
                       const isWon = p.status === 'Won';
@@ -933,7 +981,9 @@ export function MyProposals() {
                 style={{ borderColor: 'var(--jolly-border)' }}
               >
                 <p style={{ fontSize: '13px', color: 'var(--jolly-text-disabled)' }}>
-                  Showing {filtered.length} of {proposals.length} proposals
+                  <span aria-live="polite">
+                    Showing {sorted.length} of {proposals.length} proposals
+                  </span>
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -1050,26 +1100,9 @@ export function MyProposals() {
               >
                 Try adjusting your filters or create a new proposal.
               </p>
-              <Link
-                to="/proposals/new"
-                className="flex items-center gap-2"
-                style={{
-                  height: '36px',
-                  padding: '0 20px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: 'var(--jolly-primary)',
-                  color: 'white',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                }}
-              >
-                <Plus size={15} /> New Proposal
-              </Link>
+              <Button buttonStyle="primary" size="small" onClick={() => navigate('/proposals/new')}>
+                <span className="inline-flex items-center gap-2"><Plus size={15} /> New Proposal</span>
+              </Button>
             </div>
           )}
         </div>
@@ -1083,8 +1116,9 @@ export function MyProposals() {
 function SecondaryAction({ status }: { status: ProposalStatus }) {
   const config: Record<
     ProposalStatus,
-    { label: string; icon: React.ReactNode } | null
+    { label: string; icon: ReactNode } | null
   > = {
+    'Design request': { label: 'Open brief', icon: <ExternalLink size={12} /> },
     Draft: { label: 'Duplicate', icon: <Copy size={12} /> },
     Sent: { label: 'Follow up', icon: <Mail size={12} /> },
     Approved: { label: 'Create order', icon: <ShoppingCart size={12} /> },
