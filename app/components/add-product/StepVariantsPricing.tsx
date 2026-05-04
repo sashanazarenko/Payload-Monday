@@ -151,22 +151,6 @@ export function StepVariantsPricing({ formData, onUpdate, currentRole, errors }:
     });
   };
 
-  const getTierFreight = (tierId: string | undefined) => {
-    if (isAppaSource) return appaShippingPerUnit;
-    return supplierIsDecorator ? freightLeg2 : (freightLeg1 + freightLeg2);
-  };
-
-  const getTierBespoke = (tierId: string | undefined) => {
-    return isBespoke && tierId ? sumBespokeAddonsForTier(normalizedBespokeAddons, tierId) : 0;
-  };
-
-  const getTierTotalCost = (tier: PricingTier | undefined) => {
-    if (!tier) return 0;
-    const freight = getTierFreight(tier.id);
-    const bespoke = getTierBespoke(tier.id);
-    return (tier.unitCost || 0) + decorationCost + freight + bespoke;
-  };
-
   const getTierTargetMargin = (tier: PricingTier) => {
     return typeof tier.marginTargetPct === 'number' ? tier.marginTargetPct : marginTarget;
   };
@@ -175,26 +159,12 @@ export function StepVariantsPricing({ formData, onUpdate, currentRole, errors }:
     return typeof tier.marginFloorPct === 'number' ? tier.marginFloorPct : marginFloor;
   };
 
-  const getTierSellPrice = (tier: PricingTier) => {
-    const target = getTierTargetMargin(tier);
-    const cost = getTierTotalCost(tier);
-    return target < 100 ? cost / (1 - target / 100) : 0;
-  };
-
   const handleTierMarginTargetChange = (tierId: string, nextMargin: number) => {
     handleTierChange(tierId, 'marginTargetPct', Math.min(Math.max(nextMargin, 0), 99.9));
   };
 
   const handleTierMarginFloorChange = (tierId: string, nextFloor: number) => {
     handleTierChange(tierId, 'marginFloorPct', Math.max(nextFloor, 0));
-  };
-
-  const handleTierSellPriceChange = (tierId: string, nextSellPrice: number) => {
-    const tier = pricingTiers.find(t => t.id === tierId);
-    if (!tier) return;
-    const cost = getTierTotalCost(tier);
-    const margin = nextSellPrice > 0 ? (1 - (cost / nextSellPrice)) * 100 : 0;
-    handleTierMarginTargetChange(tierId, Number.isFinite(margin) ? margin : 0);
   };
 
   // Check for tier gaps
@@ -510,7 +480,6 @@ export function StepVariantsPricing({ formData, onUpdate, currentRole, errors }:
                     </th>
                     <th className="text-left py-3 px-4" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)' }}>Target Margin %</th>
                     <th className="text-left py-3 px-4" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)' }}>Margin Floor %</th>
-                    <th className="text-left py-3 px-4" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)' }}>Sell Price (AUD)</th>
                     <th className="text-left py-3 px-4" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)', width: '160px' }}>Source</th>
                     <th className="text-right py-3 px-4" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--jolly-text-secondary)', width: '60px' }}></th>
                   </tr>
@@ -519,8 +488,6 @@ export function StepVariantsPricing({ formData, onUpdate, currentRole, errors }:
                   {pricingTiers.map((tier, index) => {
                     const tierTarget = getTierTargetMargin(tier);
                     const tierFloor = getTierMarginFloor(tier);
-                    const tierSell = getTierSellPrice(tier);
-                    const tierWarn = tierTarget < tierFloor;
                     return (
                     <tr
                       key={tier.id}
@@ -592,25 +559,6 @@ export function StepVariantsPricing({ formData, onUpdate, currentRole, errors }:
                           />
                           <span style={{ color: 'var(--jolly-text-disabled)', fontSize: '12px' }}>%</span>
                         </div>
-                      </td>
-                      <td className="py-2 px-4">
-                        <div className="flex items-center gap-1">
-                          <span style={{ color: 'var(--jolly-text-disabled)', fontSize: '14px' }}>$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={Number(tierSell.toFixed(2))}
-                            onChange={(e) => handleTierSellPriceChange(tier.id, parseFloat(e.target.value) || 0)}
-                            className="w-full px-3 py-1.5"
-                            style={{ ...inputStyle, height: '32px', width: '128px', borderColor: tierWarn ? 'var(--jolly-warning)' : 'var(--jolly-border)' }}
-                          />
-                        </div>
-                        {tierWarn && (
-                          <div style={{ fontSize: '10px', color: 'var(--jolly-warning)', marginTop: '3px' }}>
-                            Below floor
-                          </div>
-                        )}
                       </td>
                       {/* Source badge */}
                       <td className="py-2 px-4">
