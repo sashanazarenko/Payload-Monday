@@ -476,9 +476,7 @@ export function StepAssets({ formData, onUpdate }: StepAssetsProps) {
             Product Images
           </h2>
           <p style={{ fontSize: '13px', color: 'var(--jolly-text-secondary)', marginTop: '2px' }}>
-            {proposalOnly
-              ? 'Proposal-only products must include at least one blank product image for proposals.'
-              : 'Blank product images are used for quoting and mockups.'}
+            Blank product images are used for quoting and mockups.
           </p>
         </div>
         <div className="p-6 space-y-6">
@@ -486,13 +484,18 @@ export function StepAssets({ formData, onUpdate }: StepAssetsProps) {
           <div>
             <h3 className="mb-3 flex flex-wrap items-center gap-2" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--jolly-text-body)' }}>
               Blank Product Images
-              {proposalOnly ? (
-                <span style={{ color: 'var(--jolly-destructive)', fontSize: '13px', fontWeight: 700 }}>* required for proposal-only</span>
-              ) : (
-                <span className="px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--jolly-bg)', fontSize: '11px', fontWeight: 600, color: 'var(--jolly-text-secondary)', border: '1px solid var(--jolly-border)' }}>
-                  recommended
-                </span>
-              )}
+              <span
+                className="px-2 py-0.5 rounded"
+                style={{
+                  backgroundColor: proposalOnly ? 'color-mix(in srgb, var(--jolly-destructive) 10%, white)' : 'var(--jolly-bg)',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: proposalOnly ? 'var(--jolly-destructive)' : 'var(--jolly-text-secondary)',
+                  border: `1px solid ${proposalOnly ? 'color-mix(in srgb, var(--jolly-destructive) 20%, var(--jolly-border))' : 'var(--jolly-border)'}`,
+                }}
+              >
+                {proposalOnly ? 'required' : 'recommended'}
+              </span>
             </h3>
             <UploadZone
               category="blank"
@@ -500,6 +503,11 @@ export function StepAssets({ formData, onUpdate }: StepAssetsProps) {
               accept="PNG, JPG, WEBP"
               maxSize="10 MB per file"
             />
+            {proposalOnly && (
+              <p style={{ fontSize: '12px', color: 'var(--jolly-destructive)', marginTop: '10px', fontWeight: 500 }}>
+                Proposal-only products require at least one blank product image before activation.
+              </p>
+            )}
           </div>
 
           {/* Lifestyle Images */}

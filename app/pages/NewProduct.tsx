@@ -82,7 +82,9 @@ const PRODUCT_FLOW_STEPS: Record<ProductSource, WizardStepDef[]> = {
   ],
   'proposal-only': [
     { id: 'core', label: 'Proposal Details', description: 'Capture the product identity and proposal-specific product notes used in quoting.' },
-    { id: 'pricing', label: 'Quote Pricing', description: 'Configure the pricing structure needed for proposal building and quote approval.' },
+    { id: 'decoration', label: 'Decoration', description: 'Select the primary decoration setup and capture production-ready decoration details.' },
+    { id: 'pricing', label: 'Pricing & Tiers', description: 'Define variants, pricing tiers, freight, and margin targets for proposal-only products.' },
+    { id: 'assets', label: 'Assets', description: 'Upload blank product imagery and supporting decoration assets for proposal use.' },
   ],
   bespoke: [
     { id: 'core', label: 'Bespoke Details', description: 'Establish the bespoke product identity, supplier data, and custom product notes.' },
